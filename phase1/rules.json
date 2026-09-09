@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "description": "Lemonade Ambiguity Detector seed rules (Phase 1). Declarative + extensible: new rules are JSON entries, the engine (detector.js) interprets them. Matcher types: absence (flag when signals are missing), presence (flag when signals appear), clause_count (structural). All patterns are case-insensitive JS regex strings. severity: 1=low 2=medium 3=high. safe_default=false -> surface clarifying_question instead of default_assumption.",
+  "rules": [
+    {
+      "id": "R1",
+      "category": "missing_stack",
+      "severity": 2,
+      "safe_default": true,
+      "default_assumption": "[ASSUMED: TypeScript + React (Vite) web app with Node/Express + SQLite - not stated by user]",
+      "clarifying_question": "Which language/framework/stack should this be built with?",
+      "match": {
+        "type": "absence",
+        "require_any": ["\\b(build|make|create|develop|code|clone|tool|service|website|dashboard|app|widget|system|want|needs?|i'?d like|thing|planner|tracker|planning|organizer|manager|generator|builder|monitor|reminder|checker|collector|logger)\\b"],
+        "any_of": [
+          "\\breact\\b", "\\bvue\\b", "\\bsvelte\\b", "\\bangular\\b", "\\bnode\\b", "\\bexpress\\b",
+          "\\bfastify\\b", "\\bfastapi\\b", "\\bdjango\\b", "\\bflask\\b", "\\bspring\\b", "\\brails\\b",
+          "\\bnext\\.?js\\b", "\\bnuxt\\b", "\\bsveltekit\\b", "\\bpython\\b", "\\btypescript\\b",
+          "\\bjavascript\\b", "\\bgolang\\b|\\bgo lang\\b", "\\brust\\b", "\\bc#\\b", "\\b\\.net\\b",
+          "\\bsqlite\\b", "\\bpostgresql?\\b", "\\bmysql\\b", "\\bmongodb\\b", "\\bprisma\\b", "\\btailwind\\b",
+          "\\bswift\\b", "\\bkotlin\\b", "\\bflutter\\b", "\\bbolt sdk\\b", "\\bvanilla js\\b",
+          "\\bphp\\b", "\\blaravel\\b", "\\bruby\\b", "\\bc\\+\\+\\b", "\\bjava\\b"
+        ],
+        "evidence_missing": "no stack/language/framework mentioned"
+      }
+    },
+    {
+      "id": "R2",
+      "category": "missing_platform",
+      "severity": 2,
+      "safe_default": true,
+      "default_assumption": "[ASSUMED: browser web app - platform not stated by user]",
+      "clarifying_question": "What platform is this for - web, mobile, desktop, or something else?",
+      "match": {
+        "type": "absence",
+        "require_any": ["\\b(build|make|create|develop|code|clone|tool|service|website|dashboard|app|widget|system|want|needs?|i'?d like|thing|planner|tracker|planning|organizer|manager|generator|builder|monitor|reminder|checker|collector|logger)\\b"],
+        "any_of": [
+          "\\bweb\\b", "\\bwebsite\\b", "\\bmobile\\b", "\\bios\\b", "\\bandroid\\b", "\\bdesktop\\b",
+          "\\bcli\\b", "\\bextension\\b", "\\bpwa\\b", "\\bbrowser\\b", "\\bhtml\\b", "\\bservice\\b",
+          "\\brest api\\b", "\\bslack bot\\b", "\\bdiscord bot\\b", "\\btelegram bot\\b", "\\bembeddable\\b", "\\bembedded\\b", "\\b(phone|tablet|laptop)\\b"
+        ],
+        "evidence_missing": "target platform (web/mobile/desktop/etc.) not mentioned"
+      }
+    },
+    {
+      "id": "R3",
+      "category": "vague_scope",
+      "severity": 1,
+      "safe_default": true,
+      "default_assumption": "[ASSUMED: 'clean/modern/simple' interpreted as a minimal unstyled-but-usable UI - subjective bar not stated by user]",
+      "clarifying_question": "What specifically does '<matched words>' mean for you - any concrete requirements behind it?",
+      "match": {
+        "type": "presence",
+        "any_of": [
+          "\\b(nice|clean|modern|aesthetic|beautiful|sleek|cute|pretty|cool|fun|playful|simple|simpler|flexible|powerful|robust|scalable|professional|lightweight)\\b",
+          "\\b(stuff|etc\\.?|and so on|something|kind of|sort of|type of thing|type thing|clone|progress)\\b"
+        ],
+        "suppress_any": ["\\bdone\\s*=", "\\bdata model\\b", "\\bfeatures?\\s*:", "\\bout of scope\\b"],
+        "negation_window": 0,
+        "evidence_prefix": "subjective/open-ended qualifier"
+      }
+    },
+    {
+      "id": "R4",
+      "category": "missing_data_model",
+      "severity": 3,
+      "safe_default": true,
+      "default_assumption": "[ASSUMED: data model to be designed by the implementer - entities/fields not stated by user]",
+      "clarifying_question": "What are the core entities and fields (e.g. what does a saved item look like)?",
+      "match": {
+        "type": "absence",
+        "require_any": ["\\b(build|make|create|develop|code|clone|tool|service|website|dashboard|app|widget|system|want|needs?|i'?d like|thing|planner|tracker|planning|organizer|manager|generator|builder|monitor|reminder|checker|collector|logger)\\b"],
+        "any_of": [
+          "\\bschema\\b", "\\bdata model\\b", "\\bfields?\\b", "\\bcolumns?\\b", "\\bentit(y|ies)\\b",
+          "\\btables?\\b", "\\bdatabase\\b", "\\bmodels?\\b", "\\blocalstorage\\b", "\\bindexeddb\\b",
+          "\\bjson\\b", "\\bstorage\\b",
+          "\\bsqlite\\b", "\\bpostgresql?\\b", "\\bmysql\\b", "\\bmongodb\\b", "\\bdb\\b"
+        ],
+        "evidence_missing": "no data model / entities / storage mentioned"
+      }
+    },
+    {
+      "id": "R5",
+      "category": "compound_request",
+      "severity": 3,
+      "safe_default": false,
+      "default_assumption": null,
+      "clarifying_question": "This bundles several loosely-related requests. Which part is the priority for v1, and what is out of scope?",
+      "match": {        "type": "clause_count",
+        "min_clauses": 3,
+        "min_words": 2,
+        "min_distinct_nouns": 3,
+        "split_on": "[.;]|,|\\band\\b|\\bwith\\b|\\bplus\\b|\\balso\\b",
+        "feature_nouns": ["\\b(workouts?|progress|social|features?|reporting|dashboard|notifications?|reminders?|estimates?|taxes?|categories?|search|sync|export|import|charts?|stats?|calendar|booking|comments?|ratings?)\\b"],
+        "suppress_any": ["\\bdata model\\b", "\\bout of scope\\b", "\\bdone\\s*=", "\\bdefinition of done\\b", "\\bfeatures?\\s*: "],
+        "evidence_prefix": "feature clauses detected without prioritization"
+      }
+    },
+    {
+      "id": "R6",
+      "category": "missing_success_criteria",
+      "severity": 2,
+      "safe_default": true,
+      "default_assumption": "[ASSUMED: 'done' = core flows demonstrably work end-to-end - no acceptance criteria stated by user]",
+      "clarifying_question": "How will you know this is done - any must-have flow or acceptance test?",
+      "match": {
+        "type": "absence",
+        "require_any": ["\\b(build|make|create|develop|code|clone|tool|service|website|dashboard|app|widget|system|want|needs?|i'?d like|thing|planner|tracker|planning|organizer|manager|generator|builder|monitor|reminder|checker|collector|logger)\\b"],
+        "any_of": [
+          "\\bdone\\s*=", "\\bdone:", "\\bdefinition of done\\b", "\\bacceptance criteria\\b",
+          "\\bsuccess criteria\\b", "\\bdone when\\b", "\\bverified\\b", "\\bmust pass\\b",
+          "\\bscripted test\\b", "\\bacceptance test\\b"
+        ],
+        "evidence_missing": "no definition of done / acceptance criteria"
+      }
+    },
+    {
+      "id": "R7",
+      "category": "unspecified_auth",
+      "severity": 2,
+      "safe_default": true,
+      "default_assumption": "[ASSUMED: single-user, no authentication - accounts/permissions not stated by user]",
+      "clarifying_question": "Should this support multiple users/accounts, or is it single-user with no login?",
+      "match": {
+        "type": "presence_minus",
+        "any_of": [
+          "\\b(users?|team|members?|clients?|customers?|social|sharing|invite|multi-user|crm|tinder|splitwise|calendly|bitly|slack|wife|husband|partner|girlfriend|boyfriend|spouse|family|friends?|budd(?:y|ies)|parents?|household|roommates?|coworkers?|colleagues?|classmates?|couple|group)\\b"
+        ],
+        "minus_any": [
+          "\\b(auth|login|log in|sign[ -]?in|accounts?|single[ -]?user|user accounts?|jwt|oauth|session|admin|invite link|user_?id|public key|site[ -]?key|no auth)\\b"
+        ],
+        "evidence_prefix": "implies users but says nothing about accounts/auth"
+      }
+    },
+    {
+      "id": "R8",
+      "category": "vague_integration",
+      "severity": 3,
+      "safe_default": false,
+      "default_assumption": null,
+      "clarifying_question": "Which provider/flow exactly for '<matched words>' (e.g. Stripe for payments, SMTP/mailgun for email)?",
+      "match": {
+        "type": "presence_minus",
+        "any_of": [
+          "\\b(payments?|pay|checkout|email|e-mail|mail|sms|upload|storage|maps|chatgpt|llm|embed|my site|my website)\\b"
+        ],
+        "minus_any": [
+          "\\b(stripe|paypal|square|sendgrid|mailgun|smtp|imap|gmail|s3|firebase|twilio|mailto|public key|embeddable|site[ -]?key|oauth2|webhook|sqlite|postgres|postgresql|mysql|mongodb|localstorage|indexeddb|chrome\\.storage|database)\\b"
+        ],
+        "suppress_any": ["\\bout of scope\\b"],
+        "negation_window": 18,
+        "evidence_prefix": "external integration referenced without provider/flow"
+      }
+    }
+  ]
+}

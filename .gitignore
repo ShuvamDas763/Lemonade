@@ -1,0 +1,19 @@
+node_modules/
+*.log
+.env
+.env.*
+!.env.example
+
+# Freebuff agent workspace (local only, not part of the project)
+.freebuff/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# runtime state (regenerable; keep reports, not raw artifacts)
+data/
+phase0/results/
+phase2/results/
+phase3/results/
+phase5/results/

@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "description": "Ambiguity-pattern taxonomy shared by Phase 0 (simulation attribution), Phase 1 (detector rules) and later phases. Severity: 1=low, 2=medium, 3=high. safe_default_possible=false means the gap usually needs a user answer rather than a labeled assumption.",
+  "patterns": [
+    {
+      "id": "missing_stack",
+      "category": "missing_stack",
+      "description": "No language/framework/runtime stated for the build.",
+      "severity": 2,
+      "safe_default_possible": true,
+      "example_trigger": "make me a tinder clone but for books"
+    },
+    {
+      "id": "missing_platform",
+      "category": "missing_platform",
+      "description": "Target platform unstated (web / mobile / desktop / CLI / extension).",
+      "severity": 2,
+      "safe_default_possible": true,
+      "example_trigger": "an app to save recipes"
+    },
+    {
+      "id": "vague_scope",
+      "category": "vague_scope",
+      "description": "Subjective or open-ended qualifiers that set no testable bar (nice, clean, modern, simple, flexible, 'and stuff').",
+      "severity": 1,
+      "safe_default_possible": true,
+      "example_trigger": "make it look clean"
+    },
+    {
+      "id": "missing_data_model",
+      "category": "missing_data_model",
+      "description": "Core entities and their fields unstated; the agent must invent the data model.",
+      "severity": 3,
+      "safe_default_possible": true,
+      "example_trigger": "short links app like bitly"
+    },
+    {
+      "id": "compound_request",
+      "category": "compound_request",
+      "description": "Multiple loosely-related features bundled in one sentence with no prioritization.",
+      "severity": 3,
+      "safe_default_possible": false,
+      "example_trigger": "track workouts and progress, with social features"
+    },
+    {
+      "id": "missing_success_criteria",
+      "category": "missing_success_criteria",
+      "description": "No definition of done / acceptance criteria; 'finished' is unverifiable.",
+      "severity": 2,
+      "safe_default_possible": true,
+      "example_trigger": "a podcast app"
+    },
+    {
+      "id": "unspecified_auth",
+      "category": "unspecified_auth",
+      "description": "User accounts / multi-user / permissions unaddressed though the app implies users.",
+      "severity": 2,
+      "safe_default_possible": true,
+      "example_trigger": "kanban for my dev team"
+    },
+    {
+      "id": "vague_integration",
+      "category": "vague_integration",
+      "description": "External service referenced without provider, protocol or flow (payments, email integration, login).",
+      "severity": 3,
+      "safe_default_possible": false,
+      "example_trigger": "it needs email integration"
+    }
+  ]
+}

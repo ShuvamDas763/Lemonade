@@ -1,0 +1,49 @@
+{
+  "name": "lemonade",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ambiguity-detecting, intent-preserving prompt middleware. Heuristics-first, free/local models only, evidence-first.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "keywords": [
+    "prompt-engineering",
+    "llm",
+    "ambiguity-detection",
+    "prompt-rewriting",
+    "middleware"
+  ],
+  "scripts": {
+    "test": "node phase1/verify-detector.js && node phase2/verify-rewriter.js && node phase3/verify-pipeline.js && node phase4/verify-memory.js && node phase5/verify-feedback.js && node phase6/verify-linter.js && node phase6/verify-drift.js && node phase6/verify-ab-wiring.js && node demo/verify-watch.js && npm run phase1:endpoint",
+    "phase0:sim": "node phase0/run-phase0.js --backend simulated --runs 5 && node phase0/make-report.js",
+    "phase0:ollama": "node phase0/run-phase0.js --backend ollama --runs 1 && node phase0/make-report.js",
+    "phase0:anthropic": "node phase0/run-phase0.js --backend anthropic --runs 1 --yes && node phase0/make-report.js",
+    "phase0:edge": "node phase0/run-phase0.js --edge-cases",
+    "phase1:verify": "node phase1/verify-detector.js",
+    "phase1:serve": "node phase1/server.js",
+    "phase1:endpoint": "node phase1/test-endpoint.js",
+    "phase1:stress": "node phase1/stress-test.js",
+    "phase2:verify": "node phase2/verify-rewriter.js",
+    "rewrite": "node phase2/rewrite-cli.js",
+    "detect": "node phase1/detect-cli.js",
+    "phase3:verify": "node phase3/verify-pipeline.js",
+    "phase3:coverage": "node phase3/ab-gate-coverage.js",
+    "phase4:verify": "node phase4/verify-memory.js",
+    "memory": "node phase4/memory-cli.js",
+    "feedback": "node phase5/feedback-cli.js",
+    "phase5:verify": "node phase5/verify-feedback.js",
+    "lint": "node phase6/lint-cli.js",
+    "drift": "node phase6/drift-cli.js",
+    "phase6:verify": "node phase6/verify-linter.js",
+    "phase6:drift-verify": "node phase6/verify-drift.js",
+    "phase6:wiring-verify": "node phase6/verify-ab-wiring.js",
+    "demo": "node demo/end-to-end.js",
+    "watch": "node demo/watch.js",
+    "watch:verify": "node demo/verify-watch.js",
+    "phase2:ab": "node phase2/ab-kanban.js --runs 3",
+    "phase2:ab:analyze": "node phase2/analyze-ab.js",
+    "phase2:ab:ledger": "node phase2/ab-ledger.js"
+  }
+}

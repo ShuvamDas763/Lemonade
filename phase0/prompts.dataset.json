@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "description": "Phase 0 paired-prompt benchmark: 15 pairs. Each pair targets the SAME app; 'ambiguous' reads like a real vibe-coding prompt with deliberately planted ambiguity patterns (see planted_patterns + patterns.taxonomy.json); 'explicit' states platform, stack, features, data model, scope boundaries and done criteria.",
+  "pairs": [
+    {
+      "id": "bookswipe",
+      "app": "BookSwipe (Tinder-for-books discovery app)",
+      "ambiguous": {
+        "text": "make me a tinder clone but for books, with a nice modern look",
+        "planted_patterns": ["missing_stack", "missing_platform", "vague_scope", "missing_data_model", "missing_success_criteria", "unspecified_auth"]
+      },
+      "explicit": {
+        "text": "Build a single-page web app called BookSwipe. Stack: React 18 + Vite frontend, Node/Express backend, SQLite storage. Features: swipe cards (left = pass, right = save), each card shows title/author/cover/genre; a Saved list page; 100 seeded books. Data model: Book {id, title, author, coverUrl, genre}. No user accounts (single local user). Done = swipes persist across refresh and the Saved list renders correctly."
+      }
+    },
+    {
+      "id": "habit-tracker",
+      "app": "Habit tracker PWA",
+      "ambiguous": {
+        "text": "I want an app that tracks my habits and stuff. Make it look clean.",
+        "planted_patterns": ["vague_scope", "missing_stack", "missing_platform", "missing_data_model", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a PWA habit tracker. Stack: vanilla JS + Vite, data in localStorage, no backend. Features: create a habit with a name and which weekdays it is due; per-day checkoff; current streak count per habit; a 7-day grid view for the current week. Data model: Habit {id, name, dueDays[0-6], completions[dateStrings]}. Done = 3 sample habits seeded, and checkoff + streak math verified against a 14-day scripted sequence."
+      }
+    },
+    {
+      "id": "invoice-generator",
+      "app": "Single-user invoice generator",
+      "ambiguous": {
+        "text": "Build something for sending invoices to my clients. It needs to handle taxes too, and maybe estimates later.",
+        "planted_patterns": ["vague_scope", "compound_request", "missing_stack", "missing_platform", "missing_data_model", "unspecified_auth", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a single-user web invoice tool. Stack: SvelteKit + SQLite, server-rendered pages. Features: create an invoice with client {name, email} and line items {description, qty, rate}; per-invoice tax rate %; totals computed; print-to-PDF via a print stylesheet. Data model: Invoice {id, client, items[], taxRate, status}. Estimates, multi-user auth and email sending are explicitly out of scope for v1. Done = create, print and re-open an invoice with correct totals including tax."
+      }
+    },
+    {
+      "id": "standup-bot",
+      "app": "Slack standup bot",
+      "ambiguous": {
+        "text": "A Slack bot for standups. Make it flexible.",
+        "planted_patterns": ["vague_scope", "missing_stack", "missing_data_model", "missing_success_criteria", "unspecified_auth"]
+      },
+      "explicit": {
+        "text": "Build a standup bot as a Slack app using Node + Bolt SDK, one Express service, storage in Postgres. Every weekday at 9:00 AM it posts a thread prompt in #standup; each member replies in the thread; a /standup-summary command posts a grouped digest of that day's replies. Data model: StandupEntry {date, userId, text}. Done = scripted test: two fake members reply and the summary command renders both."
+      }
+    },
+    {
+      "id": "recipe-box",
+      "app": "Recipe import + search app",
+      "ambiguous": {
+        "text": "App to save recipes from websites. Keep it simple - I cook a lot.",
+        "planted_patterns": ["missing_platform", "missing_stack", "vague_scope", "missing_data_model", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a web app (Next.js + SQLite) that imports recipes: paste a recipe URL, the server fetches the page and parses schema.org Recipe JSON-LD (title, ingredients, instructions, image), then saves it. Features: import by URL, list view with search by ingredient, manual-entry fallback when a page has no structured data. Data model: Recipe {id, title, ingredients[], steps[], imageUrl}. No accounts, no browser extension for v1. Done = import 3 real recipe URLs and searching 'garlic' returns the right ones."
+      }
+    },
+    {
+      "id": "url-shortener",
+      "app": "URL shortener service",
+      "ambiguous": {
+        "text": "Short links app like bitly.",
+        "planted_patterns": ["missing_stack", "missing_platform", "missing_data_model", "unspecified_auth", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a URL shortener as a Node/Express service with SQLite. POST /links {url} returns {code}; GET /:code 301-redirects and increments a click counter; an /admin page lists links with their click counts. No auth for v1 - the admin page is intentionally unprotected. Done = create a link, follow it, and see click count = 1 on the admin page."
+      }
+    },
+    {
+      "id": "kanban",
+      "app": "Minimal kanban board with weekly report",
+      "ambiguous": {
+        "text": "Trello but simpler, for my dev team, and I'd like some reporting on top.",
+        "planted_patterns": ["vague_scope", "compound_request", "missing_stack", "missing_data_model", "unspecified_auth", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a kanban board web app: 3 fixed columns (Todo/Doing/Done), drag-and-drop cards using native HTML5 drag events (no library), card = {id, title, assignee, column}. Stack: Next.js + Prisma + SQLite, one shared workspace, no login for v1. Reporting = exactly one view: cards moved to Done per week for the last 4 weeks. Attachments, labels and multiple boards are out of scope. Done = moving a card persists, and the weekly report counts it."
+      }
+    },
+    {
+      "id": "expense-splitter",
+      "app": "Expense splitter (Splitwise-style)",
+      "ambiguous": {
+        "text": "Splitwise clone.",
+        "planted_patterns": ["vague_scope", "missing_stack", "missing_platform", "missing_data_model", "unspecified_auth", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build an expense splitter web app (Next.js + SQLite). A group has members added via invite link; expenses are {payer, amount, description, split: even}; the app shows each member's net balance and minimal settle-up suggestions (who pays whom). Data model: Group, Member, Expense. No email notifications, no recurring expenses, no receipts for v1. Done = a scripted 3-person, 4-expense group shows correct balances and a settle-up plan that nets to zero."
+      }
+    },
+    {
+      "id": "pomodoro",
+      "app": "Pomodoro focus timer PWA",
+      "ambiguous": {
+        "text": "A focus timer app. Make it aesthetic.",
+        "planted_patterns": ["vague_scope", "missing_stack", "missing_platform", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a PWA pomodoro timer in vanilla JS + Vite, state in localStorage. Timer: 25 min focus / 5 min break, with a long 15 min break after every 4 cycles; optional task label per focus session; browser notification + sound on each transition; a history list of today's completed sessions. Done = a scripted cycle (timers shrunk to 2 seconds) advances through every transition with correct sequencing."
+      }
+    },
+    {
+      "id": "crm-lite",
+      "app": "Single-user CRM lite",
+      "ambiguous": {
+        "text": "Small CRM for my sales stuff, and it needs email integration.",
+        "planted_patterns": ["vague_scope", "vague_integration", "missing_stack", "missing_data_model", "missing_success_criteria", "unspecified_auth"]
+      },
+      "explicit": {
+        "text": "Build a single-user CRM web app (Fastify + SQLite + plain JS frontend). Contacts are {name, company, email, lastContactedAt}; pipeline stages Cold/Warm/Won/Lost with drag between stages; free-text notes per contact; CSV import for contacts. 'Email integration' for v1 = mailto: links only - real SMTP or inbox sync is out of scope. Done = import a 20-row CSV, move a contact to Won, and see the note appear on the contact page."
+      }
+    },
+    {
+      "id": "markdown-notes",
+      "app": "Local-first markdown notes app",
+      "ambiguous": {
+        "text": "Notion clone but lightweight.",
+        "planted_patterns": ["vague_scope", "missing_stack", "missing_platform", "missing_data_model", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a local-first markdown notes web app (SvelteKit + IndexedDB, no server). Left sidebar folder tree; editor with live markdown preview (CodeMirror 6 + marked); notes save on debounce; search across note titles and bodies. Notion-style databases, collaboration and sync are out of scope. Done = create a folder and 2 notes, edit one, reload - content persists and search finds a note by body text."
+      }
+    },
+    {
+      "id": "booking",
+      "app": "Barber-shop booking page",
+      "ambiguous": {
+        "text": "Calendly type thing for my barber shop.",
+        "planted_patterns": ["vague_scope", "missing_stack", "missing_platform", "missing_data_model", "missing_success_criteria", "unspecified_auth"]
+      },
+      "explicit": {
+        "text": "Build a booking page for a single barber shop (Express + SQLite + server-rendered HTML). The admin defines services {name, durationMin} and weekly availability; customers pick service, then day, then a 30-minute slot from a grid, then enter {name, phone}; the booking is saved and the slot is marked taken. Timezone is shop-local, no conversion. No payments, no email/SMS confirmations for v1. Done = booking a slot removes it from the grid and the admin list shows it."
+      }
+    },
+    {
+      "id": "fitness-log",
+      "app": "Workout logger PWA",
+      "ambiguous": {
+        "text": "Gym app to track workouts and progress, with social features.",
+        "planted_patterns": ["compound_request", "vague_scope", "missing_stack", "missing_data_model", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a workout logger PWA (React + Vite, localStorage). An exercise library is seeded with 20 common lifts; log a session {date, exercises: [{name, sets: [{weight, reps}]}]}; each exercise gets a history chart (inline SVG line of top-set weight per session). Social features, friends and sharing are explicitly out of scope for v1. Done = log 2 sessions for the same exercise and the chart renders both points."
+      }
+    },
+    {
+      "id": "podcast-player",
+      "app": "RSS podcast player web app",
+      "ambiguous": {
+        "text": "Podcast app.",
+        "planted_patterns": ["missing_stack", "missing_platform", "missing_data_model", "missing_success_criteria"]
+      },
+      "explicit": {
+        "text": "Build a web podcast player (vanilla JS + Vite). Add a podcast by RSS URL; the feed is parsed into a show with episodes; play an episode with an <audio> element; remember playback position per episode in localStorage and resume on reopen; playback speed control (1x / 1.5x / 2x). No discovery, no recommendations, no accounts. Done = add one real RSS feed, play 30 seconds, reload - playback resumes near where it stopped."
+      }
+    },
+    {
+      "id": "feedback-widget",
+      "app": "Feedback widget + dashboard",
+      "ambiguous": {
+        "text": "Widget to collect user feedback on my site, with a dashboard.",
+        "planted_patterns": ["vague_integration", "missing_stack", "missing_platform", "missing_data_model", "missing_success_criteria", "unspecified_auth"]
+      },
+      "explicit": {
+        "text": "Build a feedback widget + dashboard. Widget: an embeddable <script> snippet that renders a floating button, opens a 1-5 star rating plus optional comment, and POSTs to the API with the site's public key. API: Fastify + SQLite, table Feedback {siteKey, rating, comment, createdAt}. Dashboard: a server-rendered page per siteKey listing entries, with a CSV export button. Done = embed on a static test page, submit 3 ratings, and see them on the dashboard and in the CSV."
+      }
+    }
+  ]
+}

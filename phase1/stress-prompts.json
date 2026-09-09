@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "description": "Out-of-dataset stress set for the Phase 1 detector: 5 ambiguous prompts with deliberately planted ambiguity (fresh authoring pass, NOT from the Phase 0 dataset) + 5 well-specified prompts that should come back clean. Measures generalization and exposes rule lexicon gaps.",
+  "prompts": [
+    {
+      "id": "S1",
+      "kind": "ambiguous",
+      "text": "make me an online store for my sneakers, with cart and checkout and stuff",
+      "planted": ["missing_stack", "missing_data_model", "vague_scope", "missing_success_criteria", "vague_integration"]
+    },
+    {
+      "id": "S2",
+      "kind": "explicit",
+      "text": "Build a static restaurant website with Next.js and Tailwind. Pages: home, menu (dishes {name, price, description} from a JSON file), contact with address and hours. Deploy target: Vercel. Done = all three pages render and the menu loads from the JSON file."
+    },
+    {
+      "id": "S3",
+      "kind": "ambiguous",
+      "text": "a social network for dog owners, like instagram but for dogs, make it pop",
+      "planted": ["missing_stack", "missing_platform", "missing_data_model", "missing_success_criteria", "unspecified_auth"]
+    },
+    {
+      "id": "S4",
+      "kind": "explicit",
+      "text": "Write a Python 3 CLI tool using argparse that scans a folder of CSV files and renames columns according to a mapping file (JSON: {old: new}). Prints a summary of changes. Local single-user script, no auth. Done = renaming a 3-file sample folder produces the expected headers."
+    },
+    {
+      "id": "S5",
+      "kind": "ambiguous",
+      "text": "I need a gym management system, memberships, trainer schedules, and payment handling, make it robust",
+      "planted": ["compound_request", "vague_scope", "missing_stack", "missing_platform", "missing_data_model", "missing_success_criteria", "vague_integration"]
+    },
+    {
+      "id": "S6",
+      "kind": "explicit",
+      "text": "Build a REST API with FastAPI and PostgreSQL for a book library. Endpoints: POST /books {title, author, isbn}, GET /books?genre=, GET /books/{id}. Include pytest tests for the create and list endpoints. Done = the test suite passes against a seeded database."
+    },
+    {
+      "id": "S7",
+      "kind": "ambiguous",
+      "text": "an app for tracking my water intake, cute design, with reminders",
+      "planted": ["missing_stack", "missing_platform", "vague_scope", "missing_data_model", "missing_success_criteria"]
+    },
+    {
+      "id": "S8",
+      "kind": "explicit",
+      "text": "Build a Chrome extension (Manifest V3, vanilla JS) that highlights sentences longer than 25 words on any webpage and shows a word count tooltip on hover. Settings persist in chrome.storage.sync as {threshold}. No accounts. Done = hovering a 30-word sentence shows the correct count."
+    },
+    {
+      "id": "S9",
+      "kind": "ambiguous",
+      "text": "build me a chatgpt wrapper for my documents so I can ask questions about them, with login",
+      "planted": ["missing_stack", "missing_platform", "missing_data_model", "missing_success_criteria"]
+    },
+    {
+      "id": "S10",
+      "kind": "explicit",
+      "text": "Build a browser-based Tetris clone with HTML5 Canvas and vanilla JS, no frameworks. Features: falling pieces, rotation, line clears, scoring {lines, level, speed}. Local high-score list in localStorage. Done = a scripted 20-move playthrough completes with correct scoring."
+    }
+  ]
+}

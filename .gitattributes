@@ -1,0 +1,6 @@
+# Normalize all text files to LF in the repo and working tree, so Windows,
+# Linux, and CI always see identical content (avoids autocrlf diff noise).
+* text=auto eol=lf
+
+# Shell scripts must keep LF even on Windows checkouts.
+*.sh text eol=lf

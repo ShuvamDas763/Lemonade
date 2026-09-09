@@ -1,0 +1,7 @@
+Building a small kanban board for my dev team, please.
+The board should have exactly 3 columns and no attachments.
+Actually, change of plan: use 5 columns instead.
+Can you also add a comments section under each card?
+I said no attachments, why is there an attachments page?
+No login for v1, single shared workspace is fine.
+Also, please add a login page with Google sign-in.
