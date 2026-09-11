@@ -1,0 +1,27 @@
+i want to make a website for our college canteen because students never know whats available and they have to stand in line just to find out something is finished.
+
+basically the canteen person should be able to login and add the food items available for the day with price and how many are left.
+
+students dont need to login just open the website and see the menu for today. it should show the item name price and whether its available or sold out.
+
+there should be a search bar because sometimes there are a lot of items and maybe filters for veg non veg and drinks if thats not too hard.
+
+i also want students to be able to place an order before going to the canteen so they can just pick it up. they should select the items and quantity and then get some kind of order number.
+
+the canteen person should see incoming orders and be able to mark them as preparing, ready or completed. if an item runs out they should be able to change the stock and students should immediately see that its sold out.
+
+maybe have an estimated preparation time for each order but this is not super important.
+
+i dont want students making accounts for now because it should be quick to use. maybe later we can add login and payment.
+
+the canteen dashboard should show todays orders, how many are pending and what food items are low on stock.
+
+make the student side really simple and mobile friendly because most people will open it on their phones while walking to the canteen.
+
+for the canteen dashboard it can be more like an admin panel.
+
+i dont know what backend to use so choose something simple and easy to run locally. react is fine but if there is something easier tell me.
+
+dont add online payment or complicated delivery stuff. this is just for our college canteen pickup.
+
+build the basic version first and make sure the ordering flow actually works before adding anything else.

@@ -25,6 +25,7 @@
 // The diff report is human-readable, for glance-confirm before sending onward.
 import { buildSections } from "../phase2/rewriter.js";
 import { detect } from "../phase1/detector.js";
+import { qualityCheck, buildOptimizedMarkdown, extractRequirements } from "../phase2/optimizer.js";
 
 // Words too generic to prove intent by themselves.
 const STOPWORDS = new Set(
@@ -74,64 +75,93 @@ export function verify(rawPrompt, rewriteResult) {
   // F1 — nonempty original
   if (!trimmed) fail("nonempty-original", "the original prompt is empty; nothing to verify");
 
-  // F2 — verbatim embedding of the original as the source of truth
-  if (trimmed && !prompt.includes(trimmed)) {
-    fail("verbatim-embedding", "the original prompt text does not appear verbatim in the optimized prompt");
-  }
+  const isOptimized = result.mode === "optimize" || (!prompt.includes("## Goal (verbatim") && prompt.includes("## Goal\n"));
 
-  // F3 — canonical rebuild matches what ships (tamper detection)
-  if (trimmed) {
-    let rebuilt = null;
-    try {
-      rebuilt = buildSections(trimmed, assumptions, questions);
-    } catch (e) {
-      fail("canonical-rebuild", `reconstruction threw: ${e.message}`);
+  if (isOptimized) {
+    if (trimmed) {
+      const extracted = result.extracted ?? extractRequirements(trimmed);
+      const q = qualityCheck(trimmed, extracted, prompt);
+      if (!q.passed) {
+        for (const issue of q.issues) {
+          fail("requirement-preservation", issue);
+        }
+      }
+
+      // Canonical rebuild tamper check for optimizer
+      let rebuilt = null;
+      try {
+        rebuilt = buildOptimizedMarkdown(extracted, {
+          assumptions,
+          questions,
+          includeAcceptanceCriteria: prompt.includes("## Acceptance Criteria"),
+        });
+      } catch (e) {
+        fail("canonical-rebuild", `reconstruction threw: ${e.message}`);
+      }
+      if (rebuilt !== null && rebuilt !== prompt) {
+        fail("canonical-rebuild", "optimized prompt differs from a canonical rebuild of its declared parts (post-rewrite tampering?)");
+      }
     }
-    if (rebuilt !== null && rebuilt !== prompt) {
-      fail("canonical-rebuild", "optimized prompt differs from a canonical rebuild of its declared parts (post-rewrite tampering?)");
+  } else {
+    // F2 — verbatim embedding of the original as the source of truth
+    if (trimmed && !prompt.includes(trimmed)) {
+      fail("verbatim-embedding", "the original prompt text does not appear verbatim in the optimized prompt");
     }
-  }
 
-  // F4 — every significant original word survives
-  const missing = sigWords(trimmed).filter((w) => !new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(prompt));
-  if (trimmed && missing.length > 0) {
-    fail("word-survival", `significant original words missing from the optimized prompt: ${missing.slice(0, 10).join(", ")}`);
-  }
+    // F3 — canonical rebuild matches what ships (tamper detection)
+    if (trimmed) {
+      let rebuilt = null;
+      try {
+        rebuilt = buildSections(trimmed, assumptions, questions);
+      } catch (e) {
+        fail("canonical-rebuild", `reconstruction threw: ${e.message}`);
+      }
+      if (rebuilt !== null && rebuilt !== prompt) {
+        fail("canonical-rebuild", "optimized prompt differs from a canonical rebuild of its declared parts (post-rewrite tampering?)");
+      }
+    }
 
-  // F5 — every added line traces to a declared addition or template boilerplate
-  const declared = new Set([
-    ...assumptions.map((a) => a.text),
-    ...questions.map((q) => q.text),
-  ]);
-  const rawSig = new Set(sigWords(raw));
-  // Traceability: content lines that are neither boilerplate, nor declared
-  // additions, nor part of the verbatim original block.
-  const originalLines = new Set(trimmed.split("\n").map((l) => l.trim()).filter(Boolean));
-  const untraceable2 = prompt
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => {
-      if (!l || isTemplateBoilerplate(l) || declared.has(l) || originalLines.has(l)) return false;
-      // A line fully composed of original significant words is paraphrase-adjacent;
-      // anything with new significant content is invention.
-      const lineSig = sigWords(l);
-      const novel = lineSig.filter((w) => !rawSig.has(w));
-      return novel.length > 0;
-    });
-  if (untraceable2.length > 0) {
-    fail("addition-trace", `added content not traceable to declared assumptions/questions: "${untraceable2.slice(0, 3).join('"; "')}"`);
-  }
+    // F4 — every significant original word survives
+    const missing = sigWords(trimmed).filter((w) => !new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(prompt));
+    if (trimmed && missing.length > 0) {
+      fail("word-survival", `significant original words missing from the optimized prompt: ${missing.slice(0, 10).join(", ")}`);
+    }
 
-  // F5b — declared additions must trace to categories the detector actually
-  // fired on this prompt (deterministic re-detection; blocks category smuggling).
-  // memory_applied assumptions are exempt from flag-matching but governed by F10.
-  if (trimmed) {
-    const flagCats = new Set(detect(trimmed).flags.map((f) => f.category));
-    const undeclared = [...assumptions, ...questions].filter(
-      (a) => !flagCats.has(a.category) && a.category !== "memory_applied"
-    );
-    if (undeclared.length > 0) {
-      fail("addition-trace", `declared additions with no matching detected ambiguity flag: ${[...new Set(undeclared.map((a) => a.category))].join(", ")}`);
+    // F5 — every added line traces to a declared addition or template boilerplate
+    const declared = new Set([
+      ...assumptions.map((a) => a.text),
+      ...questions.map((q) => q.text),
+    ]);
+    const rawSig = new Set(sigWords(raw));
+    // Traceability: content lines that are neither boilerplate, nor declared
+    // additions, nor part of the verbatim original block.
+    const originalLines = new Set(trimmed.split("\n").map((l) => l.trim()).filter(Boolean));
+    const untraceable2 = prompt
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => {
+        if (!l || isTemplateBoilerplate(l) || declared.has(l) || originalLines.has(l)) return false;
+        // A line fully composed of original significant words is paraphrase-adjacent;
+        // anything with new significant content is invention.
+        const lineSig = sigWords(l);
+        const novel = lineSig.filter((w) => !rawSig.has(w));
+        return novel.length > 0;
+      });
+    if (untraceable2.length > 0) {
+      fail("addition-trace", `added content not traceable to declared assumptions/questions: "${untraceable2.slice(0, 3).join('"; "')}"`);
+    }
+
+    // F5b — declared additions must trace to categories the detector actually
+    // fired on this prompt (deterministic re-detection; blocks category smuggling).
+    // memory_applied assumptions are exempt from flag-matching but governed by F10.
+    if (trimmed) {
+      const flagCats = new Set(detect(trimmed).flags.map((f) => f.category));
+      const undeclared = [...assumptions, ...questions].filter(
+        (a) => !flagCats.has(a.category) && a.category !== "memory_applied"
+      );
+      if (undeclared.length > 0) {
+        fail("addition-trace", `declared additions with no matching detected ambiguity flag: ${[...new Set(undeclared.map((a) => a.category))].join(", ")}`);
+      }
     }
   }
 

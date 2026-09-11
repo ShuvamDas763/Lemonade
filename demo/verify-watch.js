@@ -63,14 +63,14 @@ const prevClip = onWin ? await ps("Get-Clipboard") : null;
 
 console.log("=== 1. processPrompt (engine shared by REPL + one-shot) ===");
 {
-  const r = await processPrompt(PROMPT, { store: tmpStore, copy: false });
+  const r = await processPrompt(PROMPT, { store: tmpStore, copy: false, mode: "verbatim" });
   check("gate PASS", r.ok === true && r.meta.gate === "PASS");
   check("verbatim embedding", r.optimized_prompt.includes(PROMPT));
   check("meta counts sane", r.meta.flags >= 3 && r.meta.assumptions >= 2 && Array.isArray(r.meta.memory_applied));
   check("copy:false -> copied null", r.copied === null);
   console.log(`OK  gate=${r.meta.gate} flags=${r.meta.flags} assumptions=${r.meta.assumptions} overrides=${JSON.stringify(r.meta.memory_overrides)}`);
 
-  const r2 = await processPrompt(PROMPT, { store: tmpStore, copy: true });
+  const r2 = await processPrompt(PROMPT, { store: tmpStore, copy: true, mode: "verbatim" });
   check("copy attempted -> shape contract", r2.copied === null || (typeof r2.copied.ok === "boolean" && (r2.copied.ok ? typeof r2.copied.tool === "string" : typeof r2.copied.reason === "string")));
   console.log(`OK  copy attempt -> ${JSON.stringify(r2.copied)}`);
 }
@@ -86,21 +86,21 @@ console.log("=== 2. copyToClipboard unit checks ===");
 
 console.log("=== 3. spawned e2e (real CLI) ===");
 {
-  const a = await run([PROMPT, "--store", tmpStore]);
+  const a = await run([PROMPT, "--store", tmpStore, "--verbatim"]);
   check("one-shot exit 0", a.code === 0);
   check("one-shot reports clipboard + prints prompt", a.out.includes("optimized prompt") && a.out.includes("## Goal (verbatim"));
   check("one-shot prints status line with gate", /gate PASS/.test(a.out));
 
-  const b = await run([PROMPT, "--json", "--store", tmpStore]);
+  const b = await run([PROMPT, "--json", "--store", tmpStore, "--verbatim"]);
   let j = null;
   try { j = JSON.parse(b.out); } catch {}
   check("--json parses", !!j);
   check("--json ok/gate/prompt fields", j?.ok === true && j?.meta?.gate === "PASS" && j.optimized_prompt.includes(PROMPT));
 
-  const c = await run([PROMPT, "--quiet", "--store", tmpStore]);
+  const c = await run([PROMPT, "--quiet", "--store", tmpStore, "--verbatim"]);
   check("--quiet: status only, no prompt body", c.code === 0 && /gate PASS/.test(c.out) && !c.out.includes("## Goal"));
 
-  const d = await run(["--store", tmpStore], "build a kanban board with cards and a nice look\n");
+  const d = await run(["--store", tmpStore, "--verbatim"], "build a kanban board with cards and a nice look\n");
   check("piped stdin one-shot exit 0 + prompt printed", d.code === 0 && d.out.includes("## Goal (verbatim"));
 
   const e = await run(["--help"]);
@@ -148,12 +148,23 @@ console.log("=== 3b. spec-drift ledger integration (--ledger) ===");
 
 console.log("=== 4. clipboard end-to-end proof (Windows) ===");
 if (onWin) {
-  const r = await run([PROMPT, "--store", tmpStore]);
+  const r = await run([PROMPT, "--store", tmpStore, "--verbatim"]);
   const back = await ps("Get-Clipboard");
   check("clipboard contains the optimized prompt", r.code === 0 && back.includes("## Goal (verbatim") && back.includes(PROMPT));
   console.log(`OK  clipboard round-trip verified (${back.length} chars read back)`);
 } else {
   console.log("SKIP (non-Windows): platform copy path covered by section 2 contract checks");
+}
+
+console.log("=== 5. watch optimizer mode end-to-end ===");
+{
+  const optRes = await run(["build an expense tracker with login and monthly budgets", "--store", tmpStore, "--json"]);
+  let j = null;
+  try { j = JSON.parse(optRes.out); } catch {}
+  check("optimizer run exit 0", optRes.code === 0);
+  check("optimizer json parses", !!j);
+  check("optimizer gate PASS", j?.meta?.gate === "PASS");
+  check("optimizer produces structured sections", j?.optimized_prompt?.includes("## Goal") && j?.optimized_prompt?.includes("## V1 Requirements") && j?.optimized_prompt?.includes("## Implementation"));
 }
 
 if (onWin && prevClip !== null) {

@@ -36,7 +36,7 @@ for (const p of stress) prompts.push({ label: `stress:${p.id}`, text: p.text });
 
 let sampleReport = null;
 for (const p of prompts) {
-  const rw = await rewrite(p.text);
+  const rw = await rewrite(p.text, { mode: "verbatim" });
   ok(`${p.label}: rewrite ok`, rw.ok);
   const v = verify(p.text, rw);
   ok(`${p.label}: gate PASS`, v.ok, JSON.stringify(v.hard_failures));
@@ -47,7 +47,7 @@ console.log(`  genuine rewrites checked: ${prompts.length}`);
 // ---- 2. Tampered rewrites must fail (zero false negatives) ----
 console.log("== Tampered rewrites (mutations must ALL fail) ==");
 const raw = dataset.pairs.find((p) => p.id === "kanban").ambiguous.text;
-const rw = await rewrite(raw);
+const rw = await rewrite(raw, { mode: "verbatim" });
 const base = rw.optimized_prompt;
 const mutate = async (label, fn) => {
   const m = fn(rw, base);
@@ -67,11 +67,25 @@ await mutate("nonempty-removed", (rw) => ({ ...rw, changes: { ...rw.changes, rem
 await mutate("nonempty-modified", (rw) => ({ ...rw, changes: { ...rw.changes, modified: ["reporting -> reports"] } }));
 await mutate("injected-contradiction", (rw, base) => ({ ...rw, warnings: [{ type: "possible_contradiction", category: "unspecified_auth", detail: 'assumption may conflict with "team" in the original' }] }));
 
+// ---- 2b. Optimizer Gate Verification ----
+console.log("== Optimizer gate verification ==");
+{
+  const optPrompt = "i want an expense tracker with login, food travel shopping categories, and monthly budget view";
+  const optRw = await rewrite(optPrompt, { mode: "optimize" });
+  const optV = verify(optPrompt, optRw);
+  ok("genuine optimizer rewrite passes gate", optV.ok);
+
+  // Dropping auth from the optimized prompt must fail requirement-preservation check
+  const tamperedDroppedReq = { ...optRw, optimized_prompt: optRw.optimized_prompt.replace(/\* User registration\/login\.\n/i, "") };
+  const vDropped = verify(optPrompt, tamperedDroppedReq);
+  ok("tampered optimizer rewrite (dropped requirement) fails gate", !vDropped.ok && vDropped.hard_failures.some((f) => f.check === "requirement-preservation" || f.check === "canonical-rebuild"));
+}
+
 // ---- 3. Edge cases ----
 console.log("== Edge cases ==");
 for (const [label, text] of [["empty", ""], ["one-word", "app"], ["long ~3k words", "Build an app with these details. ".repeat(400)]]) {
   try {
-    const r = await rewrite(text);
+    const r = await rewrite(text, { mode: "verbatim" });
     const v = verify(text, r);
     ok(`edge ${label}: no crash`, true, "");
     if (label === "empty") ok("edge empty: gate fails it", !v.ok);

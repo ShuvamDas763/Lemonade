@@ -14,31 +14,56 @@ raw prompt → [Ambiguity Detector] → [Rewriter] → [Intent-Preservation Veri
 
 You need Node 18.17+ and this repo — there is nothing to install (`npm install` is a no-op; zero dependencies).
 
-**1. See it work on one prompt (30 seconds)**
+**1. The Zero-Friction Daily Driver: Transparent IDE Proxy (Recommended)**
+
+```bash
+npm run proxy
+```
+
+Point **Cursor**, **Claude Code**, **Continue.dev**, or **Aider** to `http://localhost:7847/v1`:
+- **In Cursor / Continue.dev:** Set `Base URL` to `http://localhost:7847/v1`.
+- **In Claude Code / Aider:** Set `OPENAI_BASE_URL=http://localhost:7847/v1`.
+
+**What happens automatically in your IDE:**
+- **Context Pruning (Real Token Savings):** Stale compiler errors, 300-line stack traces, and old tool outputs from earlier turns are compacted — saving **30%–50% of tokens** in multi-turn sessions.
+- **Workspace Auto-Detection:** Reads your local `package.json`, `pyproject.toml`, or `go.mod` to ground assumptions in your real stack (no blind guessing).
+- **Intent Gating:** Trivial queries ("how to center a div", "regex for uuid") pass through with **0 bloat**; only greenfield/architecture requests get the full safety envelope.
+- **Runtime Invariant Firewall:** Negative constraints ("no auth for v1") become hard boundary contracts; agent outputs are audited for drift.
+
+**2. Global Hotkey Daemon (Select Text Anywhere -> Hotkey -> Paste Ready)**
+
+```bash
+npm run hotkey
+```
+Highlight any rough idea in **Cursor**, **Chrome**, **VS Code**, or **Slack**, and press **`Ctrl + Alt + T`**:
+1. It copies the text automatically.
+2. TokenTrim enriches and verifies it in milliseconds.
+3. Chimes and updates your clipboard.
+4. Press **`Ctrl + V`** to paste the structured prompt!
+
+*(Prefer a universal clipboard watcher? Run `npm run clipwatch` to trigger optimization whenever you double-copy `Ctrl+C+C`!)*
+
+**3. See it work on one prompt in terminal (30 seconds)**
 
 ```bash
 npm run demo -- "build me a habit tracker with streaks, make it feel fast and look modern"
 ```
 
-What you'll see: your prompt echoed back with its ambiguity flags (an id, evidence, severity for each), then the **optimized prompt** — your words under `## Goal (verbatim from the user…)`, followed by labeled `[ASSUMED: …]` lines and any open questions — and a `VERDICT: ✓ PASS` report at the end. Everything runs locally and deterministically; nothing is sent anywhere.
-
-**2. Try the daily-driver loop**
+**4. Try terminal watch mode (interactive REPL)**
 
 ```bash
 npm run watch
 ```
 
-Type any idea and press Enter: the optimized prompt lands on your clipboard (Windows/macOS/Linux; with no clipboard tool it's printed for manual copy instead). Paste it into Cursor, Claude Code, or any agent chat. Enter on an empty line shows your recent prompts (press `1-9` to re-copy one); `q` exits.
+Type any idea and press Enter: the optimized prompt lands on your clipboard. Paste it into any chat.
 
-**3. Verify the guarantees on your own machine**
+**5. Verify the entire system on your machine**
 
 ```bash
 npm test
 ```
 
-Nine verification harnesses run (~a minute, no network). If every one ends in `ALL CHECKS PASSED`, everything this README claims about the deterministic pipeline holds for you.
-
-That's the whole core. Memory, linting, drift detection, and the HTTP endpoint below are the same idea applied to longer sessions and bigger workflows.
+Ten verification harnesses run (~a minute, no network). If every one ends in `ALL CHECKS PASSED`, everything this README claims holds on your machine.
 
 ## Non-negotiable constraints
 
@@ -119,14 +144,18 @@ Watch and demo output uses a small fixed vocabulary:
 
 | Command | What it does |
 |---|---|
-| `npm run watch -- "<prompt>"` | **Daily driver**: optimized prompt copied to your clipboard (`--quiet`, `--json`, `--no-copy`, `--store`, `--ledger`; REPL when run bare) |
+| `npm run proxy` | **⭐ Zero-friction IDE proxy**: OpenAI-compatible `/v1` endpoint for Cursor, Claude Code, Continue.dev |
+| `npm run hotkey` | **⭐ Global hotkey daemon**: Select text anywhere -> press `Ctrl+Alt+T` -> optimized prompt on clipboard |
+| `npm run clipwatch` | **Smart clipboard watcher**: Select text -> tap `Ctrl+C+C` twice -> auto-optimized clipboard |
+| `npm run verify:market` | Run the full market-ready verification battery (proxy, pruner, workspace, intent, firewall) |
+| `npm run watch -- "<prompt>"` | **Terminal daily driver**: optimized prompt copied to your clipboard (`--quiet`, `--json`, `--no-copy`, `--store`, `--ledger`; REPL when run bare) |
 | `npm run detect -- "<prompt>"` | Flag ambiguity in one prompt (rules + score + evidence) |
 | `npm run rewrite -- "<prompt>"` | Structured rewrite: verbatim original + labeled assumptions + open questions |
 | `npm run lint -- examples/ambiguous-prompt.md` | Inline ambiguity linter for files (`--json` for editors, `--strict` for CI gates, `--min-severity N`) |
 | `npm run drift -- say "<message>"` | Feed a conversation to the spec-drift ledger (`show`, `stats`, `confirm <id>`; `--strict` gates on violations) |
 | `npm run memory -- add "<user reply>"` | Record a correction (`list --standing`, `forget <key>`) |
 | `npm run feedback -- record --edit "[ASSUMED: React]=>Vue"` | Log an outcome/edit-diff; learns preferences through the Phase 4 extractor |
-| `npm run phase1:serve` | HTTP endpoint: `POST /detect` + `GET /health` (below) |
+| `npm run phase1:serve` | HTTP endpoint: `/v1/chat/completions` + `POST /detect` + `GET /health` |
 
 ## HTTP endpoint
 

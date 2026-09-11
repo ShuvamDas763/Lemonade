@@ -14,6 +14,9 @@
 import { detect } from "../phase1/detector.js";
 import { phraseClarifyingQuestion } from "./llm-fallback.js";
 import { CorrectionStore } from "../phase4/corrections.js";
+import { detectWorkspace } from "./workspace.js";
+import { classifyIntent } from "../phase1/intent-gate.js";
+import { optimizePrompt, extractRequirements, buildOptimizedMarkdown } from "./optimizer.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -68,7 +71,10 @@ function authAssumption(raw) {
     : "[ASSUMED: single-user, no authentication - accounts/permissions not stated by user]";
 }
 
-function assumptionText(flag, raw) {
+function assumptionText(flag, raw, workspace = null) {
+  if (flag.category === "missing_stack" && workspace?.detected) {
+    return `[ASSUMED: ${workspace.summary} - detected from local ${workspace.evidenceFile}]`;
+  }
   if (flag.category === "unspecified_auth") return authAssumption(raw);
   if (flag.category === "vague_scope") {
     // Evidence-driven: name the actual qualifier(s) the user wrote.
@@ -87,29 +93,39 @@ export function buildSections(raw, assumptions, questions) {
   lines.push(raw.trim());
   lines.push("");
   if (assumptions.length === 0 && questions.length === 0) {
-    lines.push("_(Lemonade found no ambiguity: no assumptions added, no open questions.)_");
+    lines.push("_(Prompt is fully specified: no assumptions added, no open questions.)_");
     lines.push("");
   }
   if (assumptions.length > 0) {
-    lines.push("## Assumptions Made (auto-added by Lemonade - labeled placeholders, NOT user requirements)");
+    lines.push("## Technical Direction & Assumptions (labeled placeholders, not requirements)");
     lines.push("");
     for (const a of assumptions) lines.push(`- ${a.text}`);
     lines.push("");
   }
   if (questions.length > 0) {
-    lines.push("## Open Questions (Lemonade did NOT guess these - answer them if you can; otherwise the agent proceeds on labeled judgment)");
+    lines.push("## Open Questions (proceed on conservative judgment if unanswered)");
     lines.push("");
     for (const q of questions) lines.push(`- ${q.text}`);
     lines.push("");
   }
-  lines.push("## Instructions to the implementing agent");
-  lines.push("1. The Goal section above is the source of truth - do not reinterpret, drop, or add scope beyond it.");
-  lines.push("2. Assumptions are placeholders, not requirements: implement them only where needed, keep them isolated and easy to swap, and state in your summary where an assumption shaped a decision.");
-  lines.push("3. Open Questions: if the user answered them above, use those answers. Otherwise do NOT wait, stall, or re-ask - choose the most conservative interpretation, state it explicitly as an assumption in your summary, and proceed with the build.");
+  lines.push("## Implementation Rules & Scope Boundaries");
+  lines.push("1. Incremental build: start with the smallest working end-to-end V1 prototype.");
+  lines.push("2. Scope boundary: do not proactively add unrequested features (payments, social, analytics, mobile).");
+  lines.push("3. Dependencies: prefer built-in solutions and keep external packages to the absolute minimum.");
+  lines.push("4. Testing: fix root errors immediately rather than working around them.");
+  lines.push("5. Stop condition: once all V1 core criteria work, stop and summarize; do not proactively expand scope.");
   return lines.join("\n");
 }
 
-export async function rewrite(rawPrompt, { flags = null, useLlm = false, memoryPath = DEFAULT_MEMORY_PATH } = {}) {
+export async function rewrite(rawPrompt, {
+  flags = null,
+  useLlm = false,
+  memoryPath = DEFAULT_MEMORY_PATH,
+  useWorkspace = false,
+  workspaceDir = null,
+  respectIntentGate = false,
+  mode = "optimize",
+} = {}) {
   const raw = String(rawPrompt ?? "");
   const trimmed = raw.trim();
   if (!trimmed) {
@@ -125,6 +141,25 @@ export async function rewrite(rawPrompt, { flags = null, useLlm = false, memoryP
     };
   }
 
+  // Intent Gate: bypass rewriting for trivial Q&A / syntax / snippet queries if requested
+  if (respectIntentGate) {
+    const classification = classifyIntent(raw);
+    if (classification.bypassRewrite) {
+      return {
+        ok: true,
+        bypassed: true,
+        intent: classification,
+        optimized_prompt: raw,
+        assumptions_made: [],
+        clarifying_questions: [],
+        warnings: [],
+        changes: { added: [], removed: [], modified: [] },
+        memory: { applied: [], skipped: [] },
+      };
+    }
+  }
+
+  const workspace = useWorkspace ? detectWorkspace(workspaceDir ?? process.cwd()) : null;
   const resolved = flags ?? detect(raw).flags;
   const assumptions = [];
   const questions = [];
@@ -132,7 +167,7 @@ export async function rewrite(rawPrompt, { flags = null, useLlm = false, memoryP
 
   for (const flag of resolved) {
     if (flag.resolution === "assumption") {
-      const text = assumptionText(flag, raw) ?? flag.assumption;
+      const text = assumptionText(flag, raw, workspace) ?? flag.assumption;
       if (text) assumptions.push({ category: flag.category, severity: flag.severity, text });
     } else {
       let text = flag.question ?? null;
@@ -206,15 +241,67 @@ export async function rewrite(rawPrompt, { flags = null, useLlm = false, memoryP
     }
   }
 
-  const optimized_prompt = buildSections(raw, assumptions, questions);
-  const added = [...assumptions.map((a) => a.text), ...questions.map((q) => q.text)];
-  return {
-    ok: true,
-    optimized_prompt,
-    assumptions_made: assumptions,
-    clarifying_questions: questions,
-    warnings,
-    changes: { added, removed: [], modified: [] },
-    memory,
-  };
+  let optimized_prompt;
+  let extracted = null;
+  let quality = null;
+
+  if (mode === "optimize") {
+    const ext = extractRequirements(raw);
+    const filteredAssumptions = assumptions.filter((a) => {
+      if (a.category === "memory_applied") return true;
+      if (a.category === "unspecified_auth" && ext.metadata.hasAuth) return false;
+      if (a.category === "missing_success_criteria" && ext.acceptanceCriteria.length > 0) return false;
+      if (a.category === "missing_stack" && ext.techDirection.length > 0) return false;
+      if (a.category === "vague_scope" && ext.ux.length > 0) return false;
+      return true;
+    });
+
+    const filteredQuestions = questions.filter((q) => {
+      // Section 7 & 8: Remove generic boilerplate questions (Stripe, SMTP, Mailgun)
+      if (q.category === "vague_integration") return false;
+      if (/Stripe|SMTP|Mailgun|<matched words>/i.test(q.text)) return false;
+      if (q.category === "compound_request" && ((ext.futureScope?.length ?? 0) > 0 || (ext.scope?.length ?? 0) > 0)) {
+        return false;
+      }
+      return false; // In optimize mode, proceed on conservative assumptions rather than blocking open questions
+    });
+
+    const finalAssumptions = filteredAssumptions;
+    const finalQuestions = filteredQuestions;
+    const opt = optimizePrompt(raw, {
+      assumptions: finalAssumptions,
+      questions: finalQuestions,
+      workspace,
+      includeAcceptanceCriteria: true,
+    });
+    optimized_prompt = opt.optimized_prompt;
+    extracted = opt.extracted;
+    quality = opt.quality;
+    const added = [...finalAssumptions.map((a) => a.text), ...finalQuestions.map((q) => q.text)];
+    return {
+      ok: true,
+      mode,
+      optimized_prompt,
+      extracted,
+      quality,
+      assumptions_made: finalAssumptions,
+      clarifying_questions: finalQuestions,
+      warnings,
+      changes: { added, removed: [], modified: [] },
+      memory,
+    };
+  } else {
+    optimized_prompt = buildSections(raw, assumptions, questions);
+    const added = [...assumptions.map((a) => a.text), ...questions.map((q) => q.text)];
+    return {
+      ok: true,
+      mode,
+      optimized_prompt,
+      assumptions_made: assumptions,
+      clarifying_questions: questions,
+      warnings,
+      changes: { added, removed: [], modified: [] },
+      memory,
+    };
+  }
 }

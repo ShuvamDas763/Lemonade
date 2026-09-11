@@ -21,7 +21,7 @@ import { rewrite } from "../phase2/rewriter.js";
 import { verify } from "../phase3/verifier.js";
 import { extractCorrections, CorrectionStore } from "../phase4/corrections.js";
 import { SpecLedger } from "../phase6/ledger.js";
-import { copyToClipboard } from "./clipboard.js";
+import { copyToClipboard, readFromClipboard } from "./clipboard.js";
 import { CODES, makeColor, startSpinner, History, formatHistory } from "./tui.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,7 +30,7 @@ const DEFAULT_LEDGER = path.join(__dirname, "..", "data", "spec-ledger.json");
 const RULE = "─".repeat(70);
 
 function parseArgs(argv) {
-  const opts = { store: DEFAULT_STORE, copy: true, json: false, quiet: false, help: false, prompt: "", ledger: null };
+  const opts = { store: DEFAULT_STORE, copy: true, json: false, quiet: false, help: false, prompt: "", ledger: null, mode: "optimize", file: null, clip: false };
   const rest = [];
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -40,16 +40,25 @@ function parseArgs(argv) {
     else if (a === "--json") opts.json = true;
     else if (a === "--quiet") opts.quiet = true;
     else if (a === "--help" || a === "-h") opts.help = true;
+    else if (a === "--mode") opts.mode = argv[++i] ?? "optimize";
+    else if (a === "--verbatim") opts.mode = "verbatim";
+    else if (a === "--file" || a === "-f") opts.file = path.resolve(argv[++i] ?? "");
+    else if (a === "--clip" || a === "-c") opts.clip = true;
     else rest.push(a);
   }
-  opts.prompt = rest.join(" ").trim();
+  if (opts.file && fs.existsSync(opts.file)) {
+    opts.prompt = fs.readFileSync(opts.file, "utf8").trim();
+  } else {
+    opts.prompt = rest.join(" ").trim();
+  }
   return opts;
 }
 
+
 /** Rewrite + gate + copy one prompt. Returns a result object (no printing). */
-export async function processPrompt(text, { store = DEFAULT_STORE, copy = true, ledger: ledgerPath = null } = {}) {
+export async function processPrompt(text, { store = DEFAULT_STORE, copy = true, ledger: ledgerPath = null, mode = "optimize" } = {}) {
   const det = detect(text);
-  const rw = await rewrite(text, { memoryPath: store });
+  const rw = await rewrite(text, { memoryPath: store, mode });
   const gate = verify(text, rw);
   let copied = null;
   if (gate.ok && copy) copied = await copyToClipboard(rw.optimized_prompt);
@@ -86,6 +95,9 @@ export async function processPrompt(text, { store = DEFAULT_STORE, copy = true, 
       memory_overrides: (rw.memory.overrides ?? []).map((o) => o.category),
       gate: gate.ok ? "PASS" : "FAIL",
       ledger,
+      retention: rw.quality?.retentionPercent ?? null,
+      quality_score: rw.quality?.compositeScore ?? null,
+      category_retention: rw.quality?.categoryRetention ?? null,
     },
     copied, // { ok, tool } | { ok: false, reason } | null (--no-copy or failed gate)
   };
@@ -97,6 +109,17 @@ function statusLine(r) {
     ? ` · memory: ${m.memory_applied.join(",")}${m.memory_overrides.length ? ` (overrides: ${m.memory_overrides.join(",")})` : ""}`
     : "";
   if (!r.ok) return `✗ GATE FAILED — nothing copied. Fix the prompt or inspect the report above.`;
+  if (m.quality_score != null) {
+    let catDetail = "";
+    if (m.category_retention) {
+      const cr = m.category_retention;
+      catDetail = ` (Req: ${cr.requirement}% · Con: ${cr.constraint}% · UX: ${cr.ux}% · Scope: ${cr.futureScope}%)`;
+    }
+    const base = `${m.retention}% retention${catDetail} · score ${m.quality_score} · gate PASS${mem}`;
+    if (r.copied === null) return `✔ ${base} · --no-copy`;
+    if (r.copied.ok) return `✔ ${base} → clipboard (${r.copied.tool})`;
+    return `⚠ ${base} · clipboard unavailable (${r.copied.reason}) — copy the block below manually`;
+  }
   if (r.copied === null) return `✔ ${m.flags} flags · score ${m.ambiguity_score} · ${m.assumptions} assumptions · ${m.questions} question(s) · gate PASS${mem} · --no-copy`;
   if (r.copied.ok) return `✔ ${m.flags} flags · score ${m.ambiguity_score} · ${m.assumptions} assumptions · ${m.questions} question(s) · gate PASS${mem} → clipboard (${r.copied.tool})`;
   return `⚠ ${m.flags} flags · score ${m.ambiguity_score} · gate PASS${mem} · clipboard unavailable (${r.copied.reason}) — copy the block below manually`;
@@ -150,16 +173,20 @@ function printHelp() {
   npm run watch -- "prompt"         one-shot
   cat brief.md | npm run watch      pipe a multiline prompt
   npm run watch -- "p" --quiet      status line only (paste straight from clipboard)
+  <empty file> | npm run watch     same as piping (runs non-TTY path)
 
 Options:
   --store <file>   correction-memory store (default data/corrections.json, shared with npm run memory)
   --ledger <file>  also run every prompt through the spec-drift ledger (default data/spec-ledger.json,
                    shared with npm run drift); violations print inline with their confirm command
-  --no-copy        don't touch the clipboard; just print
+  --no-copy        don't touch the clipboard; just print (useful when no clipboard tool exists)
+  --show-on-fail   when a rewrite's gate fails, still print the optimized block so you
+                   can read it or copy it manually (the block is always printed in the
+                   non-quiet terminal loop)
   --quiet          status line only
   --json           machine-readable output (one-shot modes)
 
-REPL commands: Enter on empty line -> history (press 1-9 to recopy) · history · ledger show · .clear forget memory · .exit (or q) leave · .help`);
+REPL commands: Enter on empty line -> history (press 1-9 or /1-/9 to recopy) · history · ledger show · .clear forget memory · .exit (or q) leave · .help`);
 }
 
 async function repl(opts) {
@@ -199,6 +226,11 @@ async function repl(opts) {
   const handleMeta = async (text) => {
     if (/^(exit|quit|q|\.exit|\.quit)$/i.test(text)) { finish(); return true; }
     if (/^(history|hist)$/i.test(text)) { showHistory(); return true; }
+    if (/^\/([1-9])$/.test(text) && history.size) {
+      const n = Number(text.slice(1));
+      await pick(n);
+      return true;
+    }
     if (/^ledger$/i.test(text) || /^ledger show$/i.test(text)) {
       if (!opts.ledger) { console.log("ledger off — restart with --ledger <file>"); return true; }
       try {
@@ -224,7 +256,15 @@ async function repl(opts) {
   };
 
   const ledgerNote = opts.ledger ? `\n  ledger: ${opts.ledger}` : "";
-  console.log(`${color(CODES.bold, "🍋 lemonade watch")} — type a prompt, Enter → optimized + copied. Enter on empty line = history (1-9 recopy). (.help)${ledgerNote}`);
+  console.log(color(CODES.bold, "🍋 lemonade watch"));
+  console.log(`type a prompt + Enter → optimized prompt copied to clipboard${ledgerNote}`);
+  console.log(`Enter on an empty line → recent prompts (1-9 or /1-/9 to re-copy) · .help · .exit`);
+  console.log(`history recopy also works as line input: type 1, 2, ...${history ? String(history.size) : ""} while history is shown`);
+  console.log(`or prefix with /  (e.g. /1) — handy where raw-mode keypresses aren't available`);
+  console.log(`score in the status line = ambiguity severity sum (0 = clean prompt, no assumptions)`);
+  if (!opts.ledger && opts.store === DEFAULT_STORE) {
+    console.log(color(CODES.dim, "hint: --ledger <file> turns every prompt into a spec-drift session (npm run drift reads the same file)"));
+  }
   // Keypress listener MUST be attached before readline owns stdin: our handler
   // then sees the line buffer BEFORE readline inserts the digit, which is how
   // "1-9 while history is showing" recopies instead of typing a number.
@@ -245,20 +285,35 @@ async function repl(opts) {
   }
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, prompt: `${color(CODES.bold, "🍋")} ` });
   rl.prompt();
-  rl.on("line", async (line) => {
-    const text = line.trim();
+  let pasteBuffer = [];
+  let pasteTimer = null;
+
+  const flushBuffer = async () => {
+    const text = pasteBuffer.join("\n").trim();
+    pasteBuffer = [];
+    pasteTimer = null;
     if (!text) {
       if (waitingPick && history.size) showHistory();
+      else console.log(color(CODES.dim, "(empty) type a prompt, press Enter for history, or .help"));
       return rl.prompt();
     }
     if (await handleMeta(text)) return rl.prompt();
-    const sp = startSpinner("rewriting…", { stream: process.stdout, enabled: interactive });
+    const sp = startSpinner("optimizing…", { stream: process.stdout, enabled: interactive });
     const r = await processPrompt(text, opts);
     sp.stop();
     history.add({ text: text.length > 36 ? `${text.slice(0, 35)}…` : text, ok: r.ok, r });
     printResult(r, { quiet: opts.quiet, color });
+    if (!r.ok && !opts.quiet && !opts.json) {
+      console.log(color(CODES.dim, "(nothing copied — gate failed.)"));
+    }
     waitingPick = false;
     rl.prompt();
+  };
+
+  rl.on("line", (line) => {
+    pasteBuffer.push(line);
+    if (pasteTimer) clearTimeout(pasteTimer);
+    pasteTimer = setTimeout(flushBuffer, 40);
   }).on("close", finish).on("SIGINT", finish);
 }
 
@@ -269,6 +324,26 @@ if (isMain) {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.help) { printHelp(); process.exit(0); }
 
+  if (opts.clip) {
+    const clip = await readFromClipboard();
+    if (clip.ok && clip.text) opts.prompt = clip.text.trim();
+  } else if (opts.prompt) {
+    try {
+      const clip = await readFromClipboard();
+      if (clip.ok && clip.text && clip.text.length > opts.prompt.length) {
+        const clipNorm = clip.text.trim().toLowerCase().replace(/\s+/g, " ");
+        const promptNorm = opts.prompt.trim().toLowerCase().replace(/\s+/g, " ");
+        const sample = promptNorm.slice(0, Math.min(promptNorm.length, 30));
+        if (clipNorm.includes(sample)) {
+          if (!opts.quiet && !opts.json) {
+            console.log("[Lemonade: detected shell multiline truncation; auto-recovered full prompt from clipboard]");
+          }
+          opts.prompt = clip.text.trim();
+        }
+      }
+    } catch {}
+  }
+
   const argText = opts.prompt;
   if (argText) await oneShot(argText, opts);
 
@@ -277,7 +352,8 @@ if (isMain) {
   } else {
     const piped = fs.readFileSync(0, "utf8").trim();
     if (piped) await oneShot(piped, opts);
-    printHelp();
+    else printHelp();
     process.exit(0);
   }
 }
+

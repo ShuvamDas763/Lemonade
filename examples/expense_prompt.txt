@@ -1,0 +1,9 @@
+i want to make a website for tracking expenses because i always forget where my money is going 😭
+basically i want to add an expense like food 250 or travel 500 and it should save it and show me how much i spent.
+i want a dashboard where i can see total spending and maybe a pie chart or something showing food travel shopping etc.
+also there should be like monthly spending so i can select a month and see what i spent that month. maybe add income also so it can tell me how much money i have left.
+i want login also so each user has their own expenses and nobody else can see them.
+i dont really care what database you use, just use something that is easy and free for now. frontend can be react. make the design nice but dont make it too complicated.
+can you build it from scratch and explain what i need to install because im not very experienced with this.
+first make the basic version actually work and then we can add things like editing expenses, exporting data and notifications later.
+if you think something should be added just tell me first instead of randomly adding it.

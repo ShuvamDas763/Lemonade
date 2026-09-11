@@ -14,7 +14,7 @@ Thanks for looking at Lemonade. The project has four non-negotiable constraints;
 - **Every verification harness must stay green.** Run before you push:
 
   ```bash
-  npm test        # all 8 harnesses + endpoint smoke
+  npm test        # all 9 harnesses + endpoint smoke
   ```
 
 - **New behavior needs a check.** If you add a rule, pattern, conflict type, or CLI mode, extend the corresponding `verify-*.js` harness — including a case that *fails* without your change. Plant ground truth; don't tune to pass.

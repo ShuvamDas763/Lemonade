@@ -1,0 +1,21 @@
+i want to make a website for college students to find study partners.
+
+basically students should be able to make a profile with their name, course and what subjects they are studying, and then find other students who are studying the same subjects.
+
+there should be some kind of search where i can type a subject like maths and see people who have maths in their profile.
+
+also maybe show them based on college if possible because it would be better to find someone from the same college.
+
+i want users to be able to send a request to another student and if they accept then they can chat with each other.
+
+login should be there obviously and users should only be able to edit their own profile.
+
+i want the homepage to show some recommended study partners too, maybe based on subjects they have in common.
+
+make it look modern and kind of like a social app but not too much, it should still feel like a study website.
+
+i dont know what backend or database to use so you decide something simple. react is probably fine for frontend.
+
+for now just make the basic thing work, later we can add notifications, group study rooms and maybe video calls.
+
+also please dont make it super complicated because i want to understand the code and run it locally.

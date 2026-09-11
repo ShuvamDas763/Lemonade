@@ -45,3 +45,40 @@ export function copyToClipboard(text) {
     tryNext();
   });
 }
+
+const READ_CANDIDATES = process.platform === "darwin"
+  ? [["pbpaste", []]]
+  : process.platform === "win32"
+    ? [["powershell.exe", ["-NoProfile", "-Command", "Get-Clipboard"]]]
+    : [
+        ["wl-paste", []],
+        ["xclip", ["-selection", "clipboard", "-o"]],
+        ["xsel", ["--clipboard", "--output"]],
+      ];
+
+export function readFromClipboard() {
+  return new Promise((resolve) => {
+    let idx = 0;
+    const tryNext = () => {
+      if (idx >= READ_CANDIDATES.length) {
+        return resolve({ ok: false, reason: "no clipboard reader found", text: "" });
+      }
+      const [cmd, args] = READ_CANDIDATES[idx++];
+      let child;
+      try {
+        child = spawn(cmd, args, { stdio: ["ignore", "pipe", "ignore"] });
+      } catch {
+        return tryNext();
+      }
+      let out = "";
+      child.stdout.on("data", (d) => { out += d; });
+      child.on("error", () => tryNext());
+      child.on("close", (code) => {
+        if (code === 0) resolve({ ok: true, tool: cmd, text: out });
+        else tryNext();
+      });
+    };
+    tryNext();
+  });
+}
+

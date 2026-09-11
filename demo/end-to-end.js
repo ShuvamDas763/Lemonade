@@ -5,7 +5,7 @@
 //   node demo/end-to-end.js --loop                      # correction-memory story:
 //                                                        two corrections -> promotion ->
 //                                                        next prompt gets the preference
-//   --store <path>   where the demo memory lives (default data/demo-corrections.json)
+//   --store <path>   where the demo memory lives (default: a private demo file)
 //
 // Uses only the deterministic pipeline (zero model calls). The optional Ollama
 // deep check remains available via phase3/verify-cli.js --deep.
@@ -22,7 +22,7 @@ const args = process.argv.slice(2);
 const storeIdx = args.indexOf("--store");
 const storePath = storeIdx >= 0
   ? args[storeIdx + 1]
-  : path.join(__dirname, "..", "data", "demo-corrections.json");
+  : path.join(__dirname, "..", "data", `demo-corrections-${process.pid}.json`);
 const rest = storeIdx >= 0 ? args.filter((a, i) => i !== storeIdx && i !== storeIdx + 1) : args;
 const mode = rest[0] === "--loop" ? "loop" : "once";
 const prompt = mode === "once" ? rest.join(" ").trim() : "";

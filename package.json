@@ -16,7 +16,12 @@
     "middleware"
   ],
   "scripts": {
-    "test": "node phase1/verify-detector.js && node phase2/verify-rewriter.js && node phase3/verify-pipeline.js && node phase4/verify-memory.js && node phase5/verify-feedback.js && node phase6/verify-linter.js && node phase6/verify-drift.js && node phase6/verify-ab-wiring.js && node demo/verify-watch.js && npm run phase1:endpoint",
+    "test": "node phase1/verify-detector.js && node phase2/verify-rewriter.js && node phase3/verify-pipeline.js && node phase4/verify-memory.js && node phase5/verify-feedback.js && node phase6/verify-linter.js && node phase6/verify-drift.js && node phase6/verify-ab-wiring.js && node demo/verify-watch.js && npm run phase1:endpoint && node test/verify-market-ready.js && node test/verify-cross-contamination.js && node test/verify-boundaries.js",
+    "verify:contamination": "node test/verify-cross-contamination.js",
+    "proxy": "node phase1/server.js",
+    "hotkey": "node demo/hotkey.js",
+    "clipwatch": "node demo/clipwatch.js",
+    "verify:market": "node test/verify-market-ready.js",
     "phase0:sim": "node phase0/run-phase0.js --backend simulated --runs 5 && node phase0/make-report.js",
     "phase0:ollama": "node phase0/run-phase0.js --backend ollama --runs 1 && node phase0/make-report.js",
     "phase0:anthropic": "node phase0/run-phase0.js --backend anthropic --runs 1 --yes && node phase0/make-report.js",
