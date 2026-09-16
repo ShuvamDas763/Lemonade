@@ -31,7 +31,7 @@ export function segmentIntoStatements(rawPrompt) {
 // ---- Pattern matchers for semantic classification ----
 
 const CONSTRAINT_PATTERNS = [
-  /\b(don't|do not|never|no\s+|cannot|must not|shouldn't|should not|only(?!\s+if)|pickup only|local only|without)\b/i,
+  /\b(don't|do not|never|no\s+|cannot|must not|shouldn't|should not|pickup only|local only|private from|read[- ]only|without)\b/i,
   /\b(forbidden|prohibited|excluded|banned|disallowed|restricted)\b/i,
 ];
 
@@ -68,7 +68,7 @@ const UX_PATTERNS = [
 ];
 
 const TECH_PATTERNS = [
-  /\b(react|vue|svelte|angular|node|express|fastapi|django|flask|sqlite|postgres|mongodb|redis|docker|kubernetes|aws|gcp|azure|typescript|python|go|rust|graphql|rest|api|websocket|tailwind|bootstrap)\b/i,
+  /\b(react|vue|svelte|angular|node|express|fastapi|django|flask|sqlite|postgres|mongodb|redis|docker|kubernetes|aws|gcp|azure|typescript|python|go|rust|graphql|rest|api|websocket|tailwind|bootstrap|fs\b|built-in|stdlib|standard library)\b/i,
 ];
 
 const DATA_ENTITY_PATTERNS = [
@@ -170,7 +170,22 @@ export function extractSpec(rawPrompt) {
 
   const items = [];
   const ambiguityGaps = [];
-  const segments = segmentIntoStatements(raw);
+  const rawSegments = segmentIntoStatements(raw);
+  const segments = [];
+  for (const seg of rawSegments) {
+    const splitMatch = seg.match(/^(.*?)(?:,\s*|\s*;\s*|\s+and\s+|\s+but\s+)(no\s+.+|never\s+.+|without\s+.+|do not\s+.+|don't\s+.+|cannot\s+.+|must not\s+.+|avoid\s+.+)$/i);
+    if (splitMatch) {
+      const part1 = splitMatch[1].trim();
+      const part2 = splitMatch[2].trim();
+      const part1IsNegative = /\b(don't|do not|never|no\s+|cannot|must not|without)\b/i.test(part1);
+      if (!part1IsNegative && part1.length >= 5) {
+        segments.push(part1);
+        segments.push(part2);
+        continue;
+      }
+    }
+    segments.push(seg);
+  }
 
   // 1. Goal — first substantial sentence
   let goal = "";

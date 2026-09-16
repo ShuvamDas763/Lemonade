@@ -578,7 +578,25 @@ export function extractRequirements(rawPrompt) {
   }
 
   // Generalized Semantic Extraction: ensures user's actual statements are NEVER lost
-  const units = segmentPrompt(raw);
+  const rawUnits = segmentPrompt(raw);
+  const units = [];
+  for (const u of rawUnits) {
+    // Split compound directives: affirmative statement + negative constraint
+    // e.g. "Use only Node's built-in fs module, no external packages."
+    const splitMatch = u.match(/^(.*?)(?:,\s*|\s*;\s*|\s+and\s+|\s+but\s+)(no\s+.+|never\s+.+|without\s+.+|do not\s+.+|don't\s+.+|cannot\s+.+|must not\s+.+|avoid\s+.+)$/i);
+    if (splitMatch) {
+      const part1 = splitMatch[1].trim();
+      const part2 = splitMatch[2].trim();
+      const part1IsNegative = /\b(don't|do not|never|no\s+|cannot|must not|without)\b/i.test(part1);
+      if (!part1IsNegative && part1.length >= 5) {
+        units.push(part1);
+        units.push(part2);
+        continue;
+      }
+    }
+    units.push(u);
+  }
+
   for (const unit of units) {
     const uLower = unit.toLowerCase();
     // Skip empty or trivial greeting
@@ -605,7 +623,7 @@ export function extractRequirements(rawPrompt) {
 
     if (/\b(basic version|first version|keep it simple|don't over-engineer|don't add random|random features)\b/i.test(uLower)) {
       extracted.boundaries.push(unit);
-    } else if (/\b(don't|do not|never|no\s+|cannot|must not|only(?!\s+if)|pickup only|local only|private from)\b/i.test(uLower)) {
+    } else if (/\b(don't|do not|never|no\s+|cannot|must not|pickup only|local only|private from|read[- ]only)\b/i.test(uLower)) {
       extracted.constraints.push(unit);
       addEntity("CON-GEN", "constraint", "System", "Enforce", "Constraint", "", unit, [], "MUST", "V1", unit);
     } else if (/\b(optional|if practical|if easy|nice to have|if possible|only if|if simple|if not too hard|otherwise skip)\b/i.test(uLower)) {
@@ -616,7 +634,7 @@ export function extractRequirements(rawPrompt) {
       addEntity("FUT-GEN", "future", "System", "Defer", "Feature", "", unit, [], "FUTURE", "Future", unit);
     } else if (/\b(clean|modern|mobile|responsive|ui|design|feel|simple)\b/i.test(uLower)) {
       extracted.ux.push(unit);
-    } else if (/\b(react|vue|node|express|sqlite|postgres|database|backend)\b/i.test(uLower)) {
+    } else if (/\b(react|vue|node|express|sqlite|postgres|database|backend|fs\b|built-in|stdlib|standard library)\b/i.test(uLower)) {
       extracted.techDirection.push(unit);
     } else {
       extracted.v1Requirements.push(unit);
@@ -626,17 +644,68 @@ export function extractRequirements(rawPrompt) {
 
   // Implementation Execution Rules (Universal)
   extracted.implementation = [
-    "Build incrementally.",
+    "Build incrementally: start with the smallest working end-to-end V1 prototype.",
     "Keep the architecture simple and easy to understand for beginners.",
-    "Test each major flow.",
-    "Fix root errors rather than working around them.",
+    "Scope boundary: strictly adhere to the 'Must Build' vs 'Must NOT Build' lists.",
+    "Dependencies: prefer built-in standard library solutions; keep external packages to the absolute minimum.",
+    "Testing: fix root errors immediately rather than working around them.",
     "If an implementation detail is unspecified, make the simplest reasonable assumption and label it.",
-    "Ask before adding functionality that was not requested.",
-    "Stop once the V1 requirements work end-to-end. Do not proactively build future features.",
+    "Stop condition (Rule 3.4): Stop and summarize once the deliverable is complete and all self-test steps pass. Do not proactively output unrequested V2 features.",
   ];
 
   extracted.futureScope = extracted.scope;
   return extracted;
+}
+
+export function inferDeliverableFormat(rawText) {
+  const lower = String(rawText ?? "").toLowerCase();
+
+  if (lower.includes("one file") || lower.includes("single file") || lower.includes("all in one") || (lower.includes("html") && lower.includes("css") && lower.includes("javascript"))) {
+    return "Single standalone `index.html` file containing inline HTML, CSS, and JavaScript. Runnable immediately by opening in any browser with zero build setup or local servers.";
+  }
+  if (lower.includes("cli") || lower.includes("command line") || lower.includes("terminal") || lower.includes("script") || (lower.includes("node") && (lower.includes("read") || lower.includes("fs") || lower.includes("csv") || lower.includes("json")))) {
+    return "Single standalone executable script (e.g. Node.js) runnable directly from the command line with zero external runtime dependencies.";
+  }
+  if (lower.includes("react") && lower.includes("node")) {
+    return "Standard Node.js / React project structure with clearly separated client and server entry points.";
+  }
+  if (lower.includes("react") || lower.includes("vite")) {
+    return "Complete frontend web application code ready to run locally.";
+  }
+  if (lower.includes("website") || lower.includes("web app") || lower.includes("dashboard")) {
+    return "Complete web application deliverable ready to execute locally.";
+  }
+
+  return "Complete, runnable source code deliverable (ready to save and execute locally, with zero placeholder code).";
+}
+
+export function inferSelfTestSteps(extracted, rawText) {
+  const steps = [];
+  const lower = String(rawText ?? "").toLowerCase();
+
+  if (lower.includes("csv") || (lower.includes("read") && lower.includes("file")) || (lower.includes("sum") && lower.includes("file"))) {
+    steps.push("Run the script with a sample CSV file containing a header row and valid numeric values, asserting the output sum is printed to stdout.");
+    steps.push("Verify edge cases: confirm empty lines or non-numeric rows are handled gracefully without uncaught exceptions.");
+    return steps;
+  }
+
+  if (lower.includes("add") && (lower.includes("done") || lower.includes("delete") || lower.includes("mark") || lower.includes("task"))) {
+    steps.push("Add 2 items, toggle 1 complete, and reload the browser: verify state persists accurately.");
+    steps.push("Delete an item: verify it is permanently removed from view and storage.");
+    return steps;
+  }
+
+  if (extracted?.acceptanceCriteria && extracted.acceptanceCriteria.length > 0) {
+    return extracted.acceptanceCriteria.slice(0, 3).map((ac) => ac.replace(/^\*\s*/, ""));
+  }
+
+  if (extracted?.v1Requirements && extracted.v1Requirements.length > 0) {
+    steps.push(`Verify the primary happy-path flow: execute '${extracted.v1Requirements[0].replace(/^\*\s*/, "").slice(0, 70)}'.`);
+  } else {
+    steps.push("Run application startup and verify zero console errors or uncaught exceptions.");
+  }
+  steps.push("Verify that all user-stated features respond to input as expected without feature creep.");
+  return steps;
 }
 
 /**
@@ -646,14 +715,19 @@ export function extractRequirements(rawPrompt) {
 export function buildOptimizedMarkdown(extracted, options = {}) {
   const sections = [];
 
-  // 1. Goal
+  // 1. Deliverable Format (Rule 3.1 & Rule 2.4 — Front-loaded for small/free model tiers)
+  sections.push("## Deliverable Format (Rule 3.1)\n");
+  sections.push(inferDeliverableFormat(extracted.goal || ""));
+  sections.push("");
+
+  // 2. Goal
   if (extracted.goal) {
     sections.push("## Goal\n");
     sections.push(extracted.goal);
     sections.push("");
   }
 
-  // 2. V1 Requirements — Must Build
+  // 3. V1 Requirements — Must Build
   if (extracted.v1Requirements && extracted.v1Requirements.length > 0) {
     sections.push("## V1 Requirements — Must Build\n");
     for (const req of extracted.v1Requirements) {
@@ -662,7 +736,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 3. Constraints (if any)
+  // 4. Constraints (if any)
   if (extracted.constraints && extracted.constraints.length > 0) {
     sections.push("## Constraints\n");
     for (const c of extracted.constraints) {
@@ -671,7 +745,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 4. Implementation Boundaries
+  // 5. Implementation Boundaries
   if (extracted.boundaries && extracted.boundaries.length > 0) {
     sections.push("## Implementation Boundaries\n");
     for (const b of extracted.boundaries) {
@@ -680,7 +754,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 5. UX
+  // 6. UX
   if (extracted.ux && extracted.ux.length > 0) {
     sections.push("## UX\n");
     for (const u of extracted.ux) {
@@ -689,7 +763,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 6. Technical Direction
+  // 7. Technical Direction
   if (extracted.techDirection && extracted.techDirection.length > 0) {
     sections.push("## Technical Direction\n");
     for (const t of extracted.techDirection) {
@@ -698,7 +772,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 7. Optional / Conditional
+  // 8. Optional / Conditional
   if (extracted.optional && extracted.optional.length > 0) {
     sections.push("## Optional / Conditional\n");
     for (const opt of extracted.optional) {
@@ -707,7 +781,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 8. Future
+  // 9. Future
   if (extracted.scope && extracted.scope.length > 0) {
     sections.push("## Future\n");
     for (const s of extracted.scope) {
@@ -716,7 +790,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 9. Assumptions (labeled implementation placeholders only)
+  // 10. Assumptions (labeled implementation placeholders only)
   const assumptions = options.assumptions ?? extracted.assumptions ?? [];
   if (assumptions.length > 0) {
     sections.push("## Assumptions\n");
@@ -727,7 +801,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 10. Open Questions (strictly filtered; omitted in optimize mode)
+  // 11. Open Questions (strictly filtered; omitted in optimize mode)
   const questions = (options.questions ?? []).filter((q) => {
     const txt = typeof q === "string" ? q : q.text;
     return !/Which provider\/flow exactly|Stripe|SMTP|Mailgun/i.test(txt);
@@ -741,7 +815,7 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 11. Acceptance Criteria
+  // 12. Acceptance Criteria
   if (options.includeAcceptanceCriteria && extracted.acceptanceCriteria && extracted.acceptanceCriteria.length > 0) {
     sections.push("## Acceptance Criteria\n");
     for (const ac of extracted.acceptanceCriteria) {
@@ -750,14 +824,29 @@ export function buildOptimizedMarkdown(extracted, options = {}) {
     sections.push("");
   }
 
-  // 12. Implementation
+  // 13. Lightweight Self-Test Verification (Rule 3.6)
+  const testSteps = inferSelfTestSteps(extracted, extracted.goal || "");
+  if (testSteps.length > 0) {
+    sections.push("## Lightweight Self-Test Verification (Rule 3.6)\n");
+    sections.push("Verify these items before declaring completion:");
+    testSteps.forEach((s, idx) => sections.push(`${idx + 1}. ${s}`));
+    sections.push("");
+  }
+
+  // 14. Implementation Rules & Scope Boundaries (Universal Rules + Rule 3.4 Hard Stop Condition)
+  sections.push("## Implementation Rules & Scope Boundaries\n");
   if (extracted.implementation && extracted.implementation.length > 0) {
-    sections.push("## Implementation\n");
     for (const imp of extracted.implementation) {
       sections.push(imp.startsWith("* ") ? imp : `* ${imp}`);
     }
-    sections.push("");
+  } else {
+    sections.push("* Build incrementally: start with the smallest working end-to-end V1 prototype.");
+    sections.push("* Scope boundary: strictly adhere to the 'Must Build' vs 'Must NOT Build' lists.");
+    sections.push("* Dependencies: prefer built-in standard library solutions; keep external packages to the absolute minimum.");
+    sections.push("* Testing: fix root errors immediately rather than working around them.");
+    sections.push("* Stop condition (Rule 3.4): Stop and summarize once the deliverable is complete and all self-test steps pass. Do not proactively output unrequested V2 features.");
   }
+  sections.push("");
 
   return sections.join("\n").trim();
 }

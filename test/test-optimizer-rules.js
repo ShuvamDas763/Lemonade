@@ -3,6 +3,7 @@
 // and Free-Tier Quota Intelligence Engine.
 
 import { buildSpec } from "../src/spec/extractor.js";
+import { optimizePrompt } from "../phase2/optimizer.js";
 import { exportAgentPrompt, exportToMarkdown } from "../src/spec/exporter.js";
 import { evaluatePromptQualityAndQuota, evaluateFiveAxes, calculateDelta, generateBaselinePrompt } from "../src/spec/scoring.js";
 
@@ -80,6 +81,25 @@ check("Verifiability score exceeds 90/100", evalResult.optimizedScore.verifiabil
 check("Value delta is significantly positive (Δ > +30)", evalResult.delta.compositeDelta >= 30);
 check("Loop risk is SAFE", evalResult.optimizedScore.loopRisk === "SAFE");
 check("Target turns is 1.0 (1-shot completion)", evalResult.optimizedScore.estimatedTurns === 1.0);
+
+// --- TEST CASE 4: Unambiguous CLI/Script Prompt (Zero Invented Assumptions & Invariant Scaffolding) ---
+console.log("\n--- Test Case 4: Unambiguous CLI/Script Prompt ---");
+const scriptPrompt = "Write a script to read a CSV file and sum the amounts. Use only Node's built-in fs module, no external packages.";
+const optScript = optimizePrompt(scriptPrompt);
+
+check("Rule 3.1: Deliverable format present on script prompt", optScript.optimized_prompt.includes("## Deliverable Format"));
+check("Rule 3.1: Inferred deliverable is executable script", optScript.optimized_prompt.toLowerCase().includes("standalone executable script"));
+check("Compound clause split: negative constraint isolated", optScript.optimized_prompt.includes("## Constraints") && optScript.optimized_prompt.toLowerCase().includes("no external packages"));
+check("Compound clause split: positive tech directive isolated", optScript.optimized_prompt.includes("## Technical Direction") && optScript.optimized_prompt.toLowerCase().includes("built-in fs"));
+check("Rule 3.5: Zero hallucinated localStorage assumptions", !optScript.optimized_prompt.includes("localStorage"));
+check("Rule 3.5: Zero hallucinated auth assumptions", !optScript.optimized_prompt.toLowerCase().includes("authentication is not defined"));
+check("Rule 3.6: Self-test verification present on script prompt", optScript.optimized_prompt.includes("## Lightweight Self-Test Verification"));
+check("Rule 3.4: Hard stop condition present in Implementation Rules", optScript.optimized_prompt.includes("## Implementation Rules & Scope Boundaries") && optScript.optimized_prompt.includes("Stop condition (Rule 3.4)"));
+
+const specScript = buildSpec(scriptPrompt, "CSV Sum Script");
+const agentPromptScript = exportAgentPrompt(specScript);
+check("Agent Export: Zero false-positive assumption invention", !agentPromptScript.includes("localStorage") && agentPromptScript.includes("zero assumptions required"));
+check("Agent Export: Invariant scaffolding retained", agentPromptScript.includes("## Lightweight Self-Test Verification") && agentPromptScript.includes("## Deliverable Format"));
 
 console.log("\n=================================================");
 if (failed === 0) {

@@ -30,14 +30,17 @@ function inferDeliverableFormat(rawText) {
   if (lower.includes("one file") || lower.includes("single file") || lower.includes("all in one") || (lower.includes("html") && lower.includes("css") && lower.includes("javascript"))) {
     return "Single standalone `index.html` file containing inline HTML, CSS, and JavaScript. Runnable immediately by opening in any browser with zero build setup or local servers.";
   }
-  if (lower.includes("cli") || lower.includes("command line") || lower.includes("terminal tool")) {
-    return "Single standalone executable CLI script with zero external runtime dependencies.";
+  if (lower.includes("cli") || lower.includes("command line") || lower.includes("terminal") || lower.includes("script") || (lower.includes("node") && (lower.includes("read") || lower.includes("fs") || lower.includes("csv") || lower.includes("json")))) {
+    return "Single standalone executable script (e.g. Node.js) runnable directly from the command line with zero external runtime dependencies.";
   }
   if (lower.includes("react") && lower.includes("node")) {
     return "Standard Node.js / React project structure with clearly separated client and server entry points.";
   }
   if (lower.includes("react") || lower.includes("vite")) {
     return "Complete frontend web application code ready to run locally.";
+  }
+  if (lower.includes("website") || lower.includes("web app") || lower.includes("dashboard")) {
+    return "Complete web application deliverable ready to execute locally.";
   }
 
   return "Complete, runnable source code deliverable (ready to save and execute locally, with zero placeholder code).";
@@ -57,6 +60,11 @@ function inferSelfTestSteps(spec, rawText) {
   const steps = [];
 
   const lower = String(rawText ?? "").toLowerCase();
+  if (lower.includes("csv") || (lower.includes("read") && lower.includes("file")) || (lower.includes("sum") && lower.includes("file"))) {
+    steps.push("Run the script with a sample CSV file containing a header row and valid numeric values, asserting the output sum is printed to stdout.");
+    steps.push("Verify edge cases: confirm empty lines or non-numeric rows are handled gracefully without uncaught exceptions.");
+    return steps;
+  }
   if (lower.includes("add") && (lower.includes("done") || lower.includes("delete") || lower.includes("mark"))) {
     steps.push("Add 2 items, toggle 1 complete, and reload the browser: verify state persists accurately.");
     steps.push("Delete an item: verify it is permanently removed from the view and storage.");
@@ -210,15 +218,24 @@ export function exportToMarkdown(spec, { mode = "agent" } = {}) {
     }
     sections.push("");
   } else if (mode === "agent" || mode === "builder") {
-    sections.push("## Explicit Assumptions & Ambiguity Resolution (Rule 3.5 — Visible)\n");
-    sections.push("* [ASSUMED: Single-user local-first execution; data persists in browser localStorage with zero external cloud dependencies.]");
-    if (!rawLower.includes("login") && !rawLower.includes("auth") && !rawLower.includes("password") && !rawLower.includes("account")) {
-      sections.push("* [ASSUMED: Authentication is not defined; defaulting to single-user local execution for this draft.]");
+    const isBrowserOrApp = /\b(website|web\s*app|application|app\b|portal|dashboard|online|service|store|platform|html|browser|css|ui|interface)\b/i.test(rawLower);
+    const isScriptOrCli = /\b(script|cli|terminal|command\s*line|tool|csv|file)\b/i.test(rawLower) && !/\b(html|browser|css|ui|interface|website|web\s*app)\b/i.test(rawLower);
+
+    if (isBrowserOrApp && !isScriptOrCli) {
+      sections.push("## Explicit Assumptions & Ambiguity Resolution (Rule 3.5 — Visible)\n");
+      sections.push("* [ASSUMED: Single-user local-first execution; data persists in browser localStorage with zero external cloud dependencies.]");
+      if (!rawLower.includes("login") && !rawLower.includes("auth") && !rawLower.includes("password") && !rawLower.includes("account")) {
+        sections.push("* [ASSUMED: Authentication is not defined; defaulting to single-user local execution for this draft.]");
+      }
+      if (rawLower.includes("clean") || rawLower.includes("modern") || rawLower.includes("simple")) {
+        sections.push("* [ASSUMED: Visual aesthetic interpreted conservatively — clean sans-serif typography, soft neutral palette, standard system components.]");
+      }
+      sections.push("");
+    } else {
+      sections.push("## Explicit Assumptions & Ambiguity Resolution (Rule 3.5 — Visible)\n");
+      sections.push("*(Prompt is fully specified: zero assumptions required.)*");
+      sections.push("");
     }
-    if (rawLower.includes("clean") || rawLower.includes("modern") || rawLower.includes("simple")) {
-      sections.push("* [ASSUMED: Visual aesthetic interpreted conservatively — clean sans-serif typography, soft neutral palette, standard system components.]");
-    }
-    sections.push("");
   }
 
   // 10. Lightweight Self-Test Verification Checklist (Rule 3.6)
