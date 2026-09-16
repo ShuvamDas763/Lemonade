@@ -53,20 +53,24 @@ When developers pass ambiguous prompts to AI coding assistants (Cursor, Claude C
 
 Requires **Node.js ≥ 18.17**. Zero `npm install` needed.
 
-### 1. Launch the Local Engineering Control Room (Web UI)
+### 1. Launch the Intent Compiler Web Studio
 ```bash
 npm run ui
+# or run directly with Node (bypasses Windows PowerShell script execution policy):
+node src/ui/server.js
 ```
-Opens the dark-themed **Specification Control Room** on `http://127.0.0.1:7890`:
-- **Real-Time Ambiguity Highlighting:** Live detection of unstated stacks, missing data models, unspecified auth, and scope vagueness.
-- **Requirement Cards:** Visual provenance indicators (`user-stated`, `inferred`, `system-recommended`, `model-guess`), confidence bars, and priority badges (`MUST`, `SHOULD`, `COULD`, `WONT`).
-- **Interactive Decision Controls:** Accept (`a`), Reject (`r`), Edit (`e`), Defer (`d`), or navigate with `j`/`k`.
-- **Clarification Queue:** Open questions ranked strictly by **Ambiguity Severity × Implementation Impact × Reversibility Cost**.
-- **Implementation Drift Ledger:** Real-time coverage bars, contradiction flags, and evidence links.
+Opens the calm, editorial **Intent Compiler Studio** on `http://127.0.0.1:7890`:
+- **Progressive 3-Step Flow:**
+  - **Capture:** Clean prompt composer, mode selector (*Build App*, *Debug*, *Refactor*, *Research*), and target selection (*Generic Markdown*, *Cursor Rules*, *Claude Code*, *OpenAI Chat*, *JSON Schema*, *Coding Agent*). Zero automatic sample execution on startup.
+  - **Decide:** Surfaces human-in-the-loop decisions labeled by provenance (`User Requirement`, `Inferred Assumption`, `Recommended Proposal`, `Open Question`). Accept (`a`), Reject (`r`), Edit (`e`), or Defer (`d`). Answering questions promotes decisions directly into the compiled prompt.
+  - **Compile:** Instant side-by-side view of the compiled agent prompt, semantic diff (added / preserved / excluded), and executable acceptance contract with one-click copy and multi-format exports.
+- **Collapsible Audit Drawer:** Real-time quota economics (token cost, 1-shot turns, loop risk), 5-axis quality scorecard, spec-drift ledger, and intent integrity verification.
 
 ### 2. Transparent IDE Proxy (Cursor, Claude Code, Continue.dev, Aider)
 ```bash
 npm run proxy
+# or run directly with Node:
+node phase1/server.js
 ```
 Point your IDE to `http://localhost:7847/v1`:
 - **Cursor / Continue.dev:** Set `Base URL` to `http://localhost:7847/v1`.
@@ -77,6 +81,7 @@ Point your IDE to `http://localhost:7847/v1`:
 - **Workspace Grounding:** Inspects local `package.json`, `pyproject.toml`, or `go.mod` to ground tech stack assumptions.
 - **Intent Gating:** Trivial snippets (*"how to center a div"*) pass through untouched; architecture requests get the full integrity envelope.
 - **Invariant Firewall:** Blocks unauthorized auth/payment inventions before code is written.
+- **Security Hardened:** Recursive self-loop prevention, forwarded header stripping, and loopback CORS restrictions.
 
 ### 3. Clipboard Hotkey Daemon
 ```bash
@@ -94,18 +99,30 @@ npm run watch -- "build a markdown note taker with tagging and search"
 
 ---
 
-## Output Modes
+## Output Modes & Targets
 
-Lemonade supports six output modes for different stages of the development lifecycle:
+Lemonade supports target-aware compilation for diverse AI runtimes while keeping the underlying source specification canonical:
 
-| Mode | Purpose | Format |
+| Target / Mode | Output Delivery | Format |
 |---|---|---|
-| `agent` *(default)* | Compact, high-signal instruction prompt optimized for AI coding agents | Markdown |
-| `builder` | Complete software architecture specification with entities, workflows, and acceptance criteria | Markdown |
-| `minimal` | Compact goal, must-build requirements, and labeled assumptions only | Markdown |
-| `audit` | Comprehensive audit report with provenance breakdown, retention scores, and risk flags | Markdown |
-| `json` | Canonical `ProjectSpec` object with item IDs, source spans, and decision history | JSON |
-| `interactive` | Surfaces living spec and top-N ranked clarification questions without safe defaults | Markdown + Queue |
+| `markdown` *(generic)* | Structured, human-readable specification document | Markdown |
+| `coding-agent` *(default)* | Compact, high-signal instruction prompt with stop conditions | Markdown |
+| `cursor` | `.cursorrules` style format with prioritized constraints & checklist | Markdown |
+| `claude-code` | Native XML-tagged prompt contract (`<goal>`, `<requirements>`, `<rules>`) | XML / Markdown |
+| `openai-chat` | Chat completions messages array (`system` + `user` spec message) | JSON Array |
+| `json` | Canonical `ProjectSpec` object with item IDs, source spans, and provenance | JSON |
+| `image-gen` | Visual styling directives, palette, lighting, and negative constraints | Markdown |
+| `research` | Investigation questions, inquiry boundaries, and evidence standards | Markdown |
+
+---
+
+## Documentation
+
+Comprehensive architecture, security, and product documentation:
+- **[Productization Audit](file:///docs/PRODUCTIZATION_AUDIT.md):** Repository component mapping, risk assessment, and migration strategy.
+- **[System Architecture](file:///docs/ARCHITECTURE.md):** Core intent compiler pipeline, persistence repository, and REST API specification.
+- **[Security Policy](file:///docs/SECURITY.md):** Threat model, XSS escaping standards, payload limits, CSP, and proxy network controls.
+- **[Product Positioning](file:///docs/PRODUCT_POSITIONING.md):** Intent integrity layer definition, closed-loop workflow, and competitive analysis.
 
 ---
 
@@ -139,7 +156,7 @@ Lemonade refuses to mark a rewrite as "valid" simply because words were preserve
 
 ## Verification & Quality Gates
 
-Run the entire verification battery across all 14 test suites:
+Run the entire verification battery across all 22 test suites:
 ```bash
 npm test
 ```
@@ -148,24 +165,30 @@ npm test
 
 | Test Suite | File | Checks | Status |
 |---|---|---|---|
-| Phase 1: Ambiguity Detector | `phase1/verify-detector.js` | 81/81 recall | ✅ PASS |
-| Phase 2: Rewriter & Optimizer | `phase2/verify-rewriter.js` | 30/30 | ✅ PASS |
+| Phase 1: Ambiguity Detector | `phase1/verify-detector.js` | 23/23 | ✅ PASS |
+| Phase 2: Rewriter & Optimizer | `phase2/verify-rewriter.js` | 40/40 | ✅ PASS |
 | Phase 3: Pipeline & Gate | `phase3/verify-pipeline.js` | 96/96 | ✅ PASS |
 | Phase 4: Correction Memory | `phase4/verify-memory.js` | 21/21 | ✅ PASS |
 | Phase 5: Feedback Loop | `phase5/verify-feedback.js` | 23/23 | ✅ PASS |
-| Phase 6: Drift & Linter | `phase6/verify-drift.js` | 32/32 | ✅ PASS |
+| Phase 6: Invariant Linter | `phase6/verify-linter.js` | 90/90 | ✅ PASS |
+| Phase 6: Drift Ledger | `phase6/verify-drift.js` | 32/32 | ✅ PASS |
 | Phase 6: Firewall Wiring | `phase6/verify-ab-wiring.js` | 25/25 | ✅ PASS |
 | Watch & Clipboard Engine | `demo/verify-watch.js` | 5/5 | ✅ PASS |
+| Phase 1: HTTP API Endpoint | `phase1/test-endpoint.js` | 2/2 | ✅ PASS |
 | Market-Ready Suite | `test/verify-market-ready.js` | 33/33 | ✅ PASS |
-| Cross-Contamination Guard | `test/verify-cross-contamination.js` | 10/10 runs | ✅ PASS |
+| Cross-Contamination Guard | `test/verify-cross-contamination.js` | 10/10 runs (0 leaks) | ✅ PASS |
 | Boundary & Contradiction | `test/verify-boundaries.js` | 25/25 | ✅ PASS |
 | Canonical Spec Model | `test/verify-spec-model.js` | 24/24 | ✅ PASS |
 | Four-Dimension Validation | `test/verify-validation.js` | 12/12 | ✅ PASS |
 | Adversarial & Injection | `test/verify-adversarial.js` | 30/30 | ✅ PASS |
 | Web UI & REST API | `test/verify-ui.js` | 19/19 | ✅ PASS |
+| Optimizer Rules & Quota | `test/test-optimizer-rules.js` | 20/20 | ✅ PASS |
+| Atomic Persistence & Hydration | `test/verify-persistence.js` | 26/26 | ✅ PASS |
+| Security, CSP & Proxy Self-Loop | `test/verify-security.js` | 16/16 | ✅ PASS |
+| Core Compiler & Target API | `test/verify-core-api.js` | 32/32 | ✅ PASS |
 | 10-Domain Benchmark Corpus | `test/corpus/run-corpus.js` | 51/51 | ✅ PASS |
 
-**Total: 500+ automated checks, 0 failures.**
+**Total: 593+ automated checks, 0 failures.**
 
 ---
 
