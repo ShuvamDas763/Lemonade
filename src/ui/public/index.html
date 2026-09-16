@@ -3,346 +3,285 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lemonade — Specification Integrity Studio</title>
-  <meta name="description" content="Local-first specification integrity layer for AI-assisted software development. Prevents silent requirement invention, loss, and drift.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <title>Lemonade — Intent Integrity & Specification Platform</title>
+  <meta name="description" content="Local-first intent integrity layer between human requirements and AI execution systems. Prevents silent requirement invention, loss, and scope drift.">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-container">
-    <!-- Top Command & Status Bar -->
+  <div class="app-layout">
+    <!-- Top Navigation -->
     <header class="top-nav">
-      <div class="nav-left">
-        <div class="logo">
-          <div class="logo-mark">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Z" fill="url(#lemon-fill)" fill-opacity="0.2"/>
-              <path d="M19 5C16.5 2.5 11.5 2.2 7.8 4.4 4.1 6.6 2.4 10.7 3.6 14.8 4.8 18.9 8.6 21.8 12.9 21.8c4.3 0 7.9-2.8 8.9-7 .6-2.4.1-5-1.2-7Z" stroke="url(#lemon-grad)" stroke-width="2" stroke-linecap="round"/>
-              <circle cx="12" cy="12" r="3" fill="#f59e0b"/>
-              <defs>
-                <linearGradient id="lemon-fill" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#fef08a"/>
-                  <stop offset="1" stop-color="#f59e0b"/>
-                </linearGradient>
-                <linearGradient id="lemon-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                  <stop stop-color="#fef08a"/>
-                  <stop offset="0.5" stop-color="#fbbf24"/>
-                  <stop offset="1" stop-color="#d97706"/>
-                </linearGradient>
-              </defs>
-            </svg>
-          </div>
-          <div class="logo-text-group">
-            <span class="logo-title">LEMONADE</span>
-            <span class="logo-badge">INTEGRITY STUDIO</span>
-          </div>
+      <div class="nav-brand">
+        <div class="logo-mark" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Z" fill="#fef08a" fill-opacity="0.2"/>
+            <path d="M19 5C16.5 2.5 11.5 2.2 7.8 4.4 4.1 6.6 2.4 10.7 3.6 14.8 4.8 18.9 8.6 21.8 12.9 21.8c4.3 0 7.9-2.8 8.9-7 .6-2.4.1-5-1.2-7Z" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="3" fill="#f59e0b"/>
+          </svg>
         </div>
-
-        <div class="privacy-pill">
-          <span class="pulse-dot"></span>
-          <span class="privacy-text">LOCAL-FIRST • 127.0.0.1</span>
+        <div class="brand-text">
+          <span class="brand-name">LEMONADE</span>
+          <span class="brand-tag">INTENT COMPILER</span>
+        </div>
+        <div class="privacy-pill" title="Strict local loopback execution with zero external telemetry">
+          <span class="pulse-indicator"></span>
+          <span>127.0.0.1 • ZERO TELEMETRY</span>
         </div>
       </div>
 
-      <div class="nav-right">
-        <div class="mode-select-wrap">
-          <span class="mode-label">Output Mode</span>
-          <div class="select-container">
-            <select id="output-mode-select" class="control-select">
-              <option value="agent" selected>Agent-Ready</option>
-              <option value="builder">Full Builder</option>
-              <option value="minimal">Minimal Compact</option>
-              <option value="audit">Audit Report</option>
-              <option value="json">Structured JSON</option>
-              <option value="interactive">Interactive</option>
-            </select>
-            <svg class="select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
-          </div>
-        </div>
+      <!-- Step Navigation Indicators -->
+      <nav class="step-nav" aria-label="Workflow Steps">
+        <button class="step-btn active" id="tab-step-1" data-step="1">
+          <span class="step-num">1</span>
+          <span class="step-label">Capture</span>
+        </button>
+        <span class="step-arrow" aria-hidden="true">→</span>
+        <button class="step-btn" id="tab-step-2" data-step="2">
+          <span class="step-num">2</span>
+          <span class="step-label">Decide</span>
+          <span class="step-badge" id="decisions-badge" style="display:none;">0</span>
+        </button>
+        <span class="step-arrow" aria-hidden="true">→</span>
+        <button class="step-btn" id="tab-step-3" data-step="3">
+          <span class="step-num">3</span>
+          <span class="step-label">Compile</span>
+        </button>
+      </nav>
 
-        <div class="nav-actions">
-          <button id="btn-copy-agent" class="btn btn-primary-hero" title="Copy Agent-Ready Prompt (Alt+C)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            <span>Agent Prompt</span>
-          </button>
-          <button id="btn-copy-md" class="btn btn-outline" title="Copy Markdown Spec (Alt+M)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 15V9l4 4 4-4v6"/></svg>
-            <span>Markdown</span>
-          </button>
-          <button id="btn-export-json" class="btn btn-outline" title="Export JSON Spec">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            <span>Export JSON</span>
-          </button>
-        </div>
+      <!-- Global Actions -->
+      <div class="nav-controls">
+        <button id="btn-toggle-audit" class="btn btn-secondary btn-sm" title="Toggle Audit & Diagnostics Drawer (Alt+A)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span>Audit Drawer</span>
+        </button>
       </div>
     </header>
 
-    <!-- Studio Layout -->
-    <main class="dashboard-grid">
-      <!-- Left Panel: Prompt Composer & Ambiguity Radar -->
-      <section class="panel panel-left" id="panel-prompt">
-        <div class="panel-header-clean">
-          <div class="header-tag">INPUT PROMPT</div>
-          <div class="sample-pills">
-            <button class="pill-btn" data-sample="saas">SaaS</button>
-            <button class="pill-btn" data-sample="ecommerce">Store</button>
-            <button class="pill-btn" data-sample="study">Study</button>
-            <button class="pill-btn" data-sample="expense">Expense</button>
+    <!-- Main Step Views -->
+    <main class="main-content">
+
+      <!-- STEP 1: CAPTURE -->
+      <section class="step-panel" id="panel-step-1">
+        <div class="panel-hero">
+          <div class="hero-left">
+            <h1 class="panel-heading">Capture Human Intent</h1>
+            <p class="panel-subheading">State what you want to build. Lemonade extracts atomic requirements, guards against scope drift, and compiles a verified prompt without inventing features.</p>
+          </div>
+          <div class="target-selector-box">
+            <label for="target-format-select" class="target-label">Compilation Target</label>
+            <select id="target-format-select" class="target-select">
+              <option value="coding-agent" selected>Coding Agent (Cursor / Claude / Aider)</option>
+              <option value="cursor">Cursor (.cursorrules Contract)</option>
+              <option value="claude-code">Claude Code (XML Intent Blocks)</option>
+              <option value="openai-chat">OpenAI Chat (JSON Messages)</option>
+              <option value="markdown">Generic Markdown Spec</option>
+              <option value="json">Canonical JSON Spec</option>
+              <option value="image-gen">Image Generation Prompt</option>
+              <option value="research">Research Inquiry Mode</option>
+            </select>
           </div>
         </div>
 
-        <div class="prompt-box-wrap">
-          <textarea id="prompt-input" spellcheck="false" placeholder="Describe the software you want to build... (e.g. user roles, constraints, database preferences, v1 vs v2 scope)"></textarea>
-        </div>
-
-        <div class="prompt-actions">
-          <button id="btn-analyze" class="btn btn-analyze">
-            <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-            <span>Extract & Verify Spec</span>
-            <kbd class="btn-kbd">Ctrl+Enter</kbd>
-          </button>
-          <button id="btn-clear" class="btn btn-ghost" title="Clear input">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        <!-- Ambiguity Radar Stream -->
-        <div class="ambiguity-section" id="ambiguity-container">
-          <div class="section-title-row">
-            <div class="section-title-left">
-              <span class="title-label">AMBIGUITY RADAR</span>
-              <span class="count-bubble" id="flag-count">0</span>
-            </div>
-            <span id="ambiguity-score-badge" class="badge badge-score">Score: 0</span>
-          </div>
-
-          <div id="flags-list" class="flags-list">
-            <div class="empty-state">
-              <div class="empty-sparkle">✨</div>
-              <p>Type or pick a preset above to detect ambiguities in real time.</p>
+        <div class="composer-container">
+          <div class="composer-toolbar">
+            <span class="composer-label">RAW PROMPT</span>
+            <div class="sample-chips" aria-label="Sample Prompts">
+              <span class="chips-label">Try sample:</span>
+              <button class="chip-btn" data-sample="saas">SaaS Portal</button>
+              <button class="chip-btn" data-sample="study">Study Matcher</button>
+              <button class="chip-btn" data-sample="expense">Expense Tracker</button>
+              <button class="chip-btn" data-sample="library">College Library</button>
             </div>
           </div>
-        </div>
-      </section>
-
-      <!-- Center Panel: Living Specification Canvas (Hero) -->
-      <section class="panel panel-middle" id="panel-spec">
-        <div class="spec-hero-header">
-          <div class="spec-hero-title-area">
-            <div class="spec-kicker">LIVING SPECIFICATION MODEL</div>
-            <h1 id="spec-title">Project Specification</h1>
-          </div>
-
-          <div class="spec-stats-bar">
-            <div class="stat-pill stat-user">
-              <span class="stat-dot dot-emerald"></span>
-              <span id="count-user">0 User-Stated</span>
+          <textarea id="prompt-input" class="prompt-textarea" spellcheck="false" placeholder="Describe the software you want to build... (e.g. user roles, constraints, database preferences, v1 vs v2 scope, and what NOT to build)"></textarea>
+          <div class="composer-footer">
+            <div class="composer-meta">
+              <span id="char-count" class="meta-pill">0 chars</span>
+              <span id="intent-type-pill" class="meta-pill" style="display:none;">Ready</span>
             </div>
-            <div class="stat-pill stat-inferred">
-              <span class="stat-dot dot-amber"></span>
-              <span id="count-inferred">0 Inferred</span>
+            <div class="composer-buttons">
+              <button id="btn-clear" class="btn btn-ghost" title="Clear input">Clear</button>
+              <button id="btn-optimize" class="btn btn-primary">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>Compile & Verify Intent</span>
+                <kbd class="kbd-hint">Ctrl+Enter</kbd>
+              </button>
             </div>
-            <div class="stat-pill stat-recommended">
-              <span class="stat-dot dot-sky"></span>
-              <span id="count-recommended">0 Recommended</span>
-            </div>
-            <div class="stat-pill stat-questions">
-              <span class="stat-dot dot-rose"></span>
-              <span id="count-questions">0 Open Questions</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Filter Segmented Control (Zero Scrollbar) -->
-        <div class="spec-nav-bar">
-          <div class="filter-segmented">
-            <button class="filter-tab active" data-filter="all">All Items</button>
-            <button class="filter-tab" data-filter="user-stated">Binding (User)</button>
-            <button class="filter-tab" data-filter="inferred">Inferred</button>
-            <button class="filter-tab" data-filter="constraint">Constraints</button>
-            <button class="filter-tab" data-filter="workflow">Workflows</button>
-            <button class="filter-tab" data-filter="data-entity">Data Entities</button>
-          </div>
-          <div class="spec-actions-quick">
-            <span class="spec-nav-tip">Use <kbd>j</kbd>/<kbd>k</kbd> to navigate • <kbd>a</kbd>/<kbd>r</kbd> to decide</span>
-          </div>
-        </div>
-
-        <!-- Requirements Canvas -->
-        <div id="items-stream" class="items-stream">
-          <div class="empty-canvas">
-            <div class="empty-icon-geom">📐</div>
-            <h3>No Specification Active</h3>
-            <p>Enter your software requirements on the left to synthesize the verified specification model.</p>
           </div>
         </div>
       </section>
 
-      <!-- Right Panel: 4D Integrity & Clarification Inspector -->
-      <section class="panel panel-right" id="panel-audit">
-        <div class="inspector-header">
-          <div class="header-tag">INTEGRITY VERIFICATION</div>
-          <span id="overall-valid-badge" class="badge badge-pending">PENDING</span>
-        </div>
-
-        <!-- 4-Dimension Quality Gate (Modern Clean Cards) -->
-        <div class="validation-grid">
-          <div class="dim-card" id="dim-preservation">
-            <div class="dim-head">
-              <span class="dim-name">Preservation</span>
-              <span class="dim-status badge badge-neutral" id="status-preservation">—</span>
-            </div>
-            <div class="dim-sub">Verbatim user authority</div>
-            <div class="dim-detail" id="detail-preservation"></div>
+      <!-- STEP 2: DECIDE -->
+      <section class="step-panel" id="panel-step-2" style="display:none;">
+        <div class="panel-hero">
+          <div class="hero-left">
+            <h2 class="panel-heading">Human Decision Review</h2>
+            <p class="panel-subheading">Inferences and system proposals remain non-binding until you approve them. Review flagged ambiguities and unconfirmed assumptions below.</p>
           </div>
-
-          <div class="dim-card" id="dim-interpretation">
-            <div class="dim-head">
-              <span class="dim-name">Interpretation</span>
-              <span class="dim-status badge badge-neutral" id="status-interpretation">—</span>
-            </div>
-            <div class="dim-sub">Actors, workflows, boundaries</div>
-            <div class="dim-detail" id="detail-interpretation"></div>
-          </div>
-
-          <div class="dim-card" id="dim-safety">
-            <div class="dim-head">
-              <span class="dim-name">Safety & Risk</span>
-              <span class="dim-status badge badge-neutral" id="status-safety">—</span>
-            </div>
-            <div class="dim-sub">Auth, payments, data exposure</div>
-            <div class="dim-detail" id="detail-safety"></div>
-          </div>
-
-          <div class="dim-card" id="dim-completeness">
-            <div class="dim-head">
-              <span class="dim-name">Completeness</span>
-              <span class="dim-status badge badge-neutral" id="status-completeness">—</span>
-            </div>
-            <div class="dim-sub">Zero unacknowledged gaps</div>
-            <div class="dim-detail" id="detail-completeness"></div>
+          <div class="step-actions">
+            <button id="btn-back-to-capture" class="btn btn-secondary">← Back to Prompt</button>
+            <button id="btn-proceed-to-compile" class="btn btn-primary">Proceed to Output →</button>
           </div>
         </div>
 
-        <!-- Quota Intelligence & 5-Axis Scorecard (Rules 1.1-1.3 & 2.1-2.5) -->
-        <div class="quota-section" id="quota-container">
-          <div class="section-title-row">
-            <div class="section-title-left">
-              <span class="title-label">QUOTA & QUALITY SCORECARD</span>
-              <span class="badge badge-score" id="quota-value-delta">+0 Δ</span>
-            </div>
-            <span class="subhead-tip" id="quota-tier-tag">Free-Tier Sizing</span>
-          </div>
+        <!-- Metric Summary Chips -->
+        <div class="decision-counters" id="decision-counters">
+          <div class="count-pill prov-user"><span id="count-user">0</span> User-Stated (Binding)</div>
+          <div class="count-pill prov-inferred"><span id="count-inferred">0</span> Inferred Assumptions</div>
+          <div class="count-pill prov-rec"><span id="count-recommended">0</span> Recommendations</div>
+          <div class="count-pill prov-questions"><span id="count-questions">0</span> Open Questions</div>
+        </div>
 
-          <div class="quota-kpi-row">
-            <div class="kpi-card" title="Estimated prompt token cost (Rule 2.1)">
-              <span class="kpi-num" id="quota-token-count">0</span>
-              <span class="kpi-label">Prompt Tokens</span>
-            </div>
-            <div class="kpi-card" title="Predicted turns to working completion (Rule 2.2)">
-              <span class="kpi-num" id="quota-turns-count">1.0</span>
-              <span class="kpi-label">Target Turns</span>
-            </div>
-            <div class="kpi-card" title="Runaway loop & scope protection (Rule 2.3 & 3.4)">
-              <span class="kpi-badge badge-pass" id="quota-loop-risk">SAFE</span>
-              <span class="kpi-label">Loop Risk</span>
-            </div>
-          </div>
+        <!-- Filter Tabs -->
+        <div class="decision-filter-bar">
+          <span class="filter-label">Filter:</span>
+          <button class="filter-btn active" data-filter="all">All Items</button>
+          <button class="filter-btn" data-filter="inferred">Inferences & Proposals</button>
+          <button class="filter-btn" data-filter="constraint">Constraints</button>
+          <button class="filter-btn" data-filter="user-stated">User Stated</button>
+        </div>
 
-          <!-- 5-Axis Radar Bars -->
-          <div class="five-axis-grid">
-            <div class="axis-row">
-              <span class="axis-name">Clarity</span>
-              <div class="axis-track"><div class="axis-fill fill-emerald" id="axis-clarity" style="width: 0%"></div></div>
-              <span class="axis-val" id="val-clarity">0</span>
-            </div>
-            <div class="axis-row">
-              <span class="axis-name">Completeness</span>
-              <div class="axis-track"><div class="axis-fill fill-emerald" id="axis-completeness" style="width: 0%"></div></div>
-              <span class="axis-val" id="val-completeness">0</span>
-            </div>
-            <div class="axis-row">
-              <span class="axis-name">Efficiency</span>
-              <div class="axis-track"><div class="axis-fill fill-amber" id="axis-efficiency" style="width: 0%"></div></div>
-              <span class="axis-val" id="val-efficiency">0</span>
-            </div>
-            <div class="axis-row">
-              <span class="axis-name">Scope Control</span>
-              <div class="axis-track"><div class="axis-fill fill-emerald" id="axis-scope" style="width: 0%"></div></div>
-              <span class="axis-val" id="val-scope">0</span>
-            </div>
-            <div class="axis-row">
-              <span class="axis-name">Verifiability</span>
-              <div class="axis-track"><div class="axis-fill fill-sky" id="axis-verifiability" style="width: 0%"></div></div>
-              <span class="axis-val" id="val-verifiability">0</span>
-            </div>
+        <!-- Decisions List / Card Stream -->
+        <div class="decisions-stream" id="decisions-stream">
+          <div class="empty-state">
+            <p>Compile a prompt in Step 1 to review structured decisions.</p>
           </div>
         </div>
 
-        <!-- Clarification Queue -->
-        <div class="queue-section">
-          <div class="section-title-row">
-            <div class="section-title-left">
-              <span class="title-label">CLARIFICATION QUEUE</span>
-              <span class="count-bubble count-bubble-warn" id="queue-count">0</span>
-            </div>
-            <span class="subhead-tip">Ranked by Irreversibility</span>
+        <!-- Clarifying Questions Queue -->
+        <div class="questions-card" id="questions-section" style="display:none;">
+          <div class="card-header">
+            <h3>Clarifying Questions</h3>
+            <span class="badge badge-warn" id="queue-badge">Pending</span>
           </div>
-          <div id="questions-list" class="questions-list">
-            <div class="empty-state-mini">
-              <span>✓ All critical decisions resolved.</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Implementation Drift Ledger -->
-        <div class="ledger-section">
-          <div class="section-title-row">
-            <div class="section-title-left">
-              <span class="title-label">IMPLEMENTATION DRIFT</span>
-            </div>
-            <span id="coverage-percent" class="badge badge-info">Coverage: 0%</span>
-          </div>
-
-          <div class="coverage-track">
-            <div class="coverage-bar-fill" id="coverage-fill" style="width: 0%"></div>
-          </div>
-
-          <div id="ledger-stats" class="ledger-stats">
-            <div class="stat-chip"><span class="stat-dot dot-emerald"></span><span id="stat-implemented">0 implemented</span></div>
-            <div class="stat-chip"><span class="stat-dot dot-amber"></span><span id="stat-unverified">0 unverified</span></div>
-            <div class="stat-chip"><span class="stat-dot dot-rose"></span><span id="stat-contradicted">0 contradicted</span></div>
-          </div>
-
-          <div id="ledger-entries" class="ledger-entries"></div>
+          <div class="questions-list" id="questions-list"></div>
         </div>
       </section>
+
+      <!-- STEP 3: COMPILE -->
+      <section class="step-panel" id="panel-step-3" style="display:none;">
+        <div class="panel-hero">
+          <div class="hero-left">
+            <h2 class="panel-heading">Verified Compiled Contract</h2>
+            <p class="panel-subheading">Your optimized, meaning-preserved prompt is ready to copy into your AI assistant or agent workflow.</p>
+          </div>
+          <div class="output-actions">
+            <button id="btn-back-to-decide" class="btn btn-secondary">← Back to Decisions</button>
+            <button id="btn-copy-output" class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy to Clipboard</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Verification Banner -->
+        <div class="verification-banner" id="verification-banner">
+          <div class="banner-left">
+            <span class="banner-icon" id="banner-icon">✓</span>
+            <div class="banner-text">
+              <strong id="banner-status">Intent Integrity Verified</strong>
+              <span id="banner-detail">Original requirements preserved with zero silent inventions.</span>
+            </div>
+          </div>
+          <div class="banner-metrics" id="banner-metrics">
+            <span class="metric-tag" id="tag-turns">1.0 Est. Turns</span>
+            <span class="metric-tag" id="tag-risk">Loop Risk: SAFE</span>
+          </div>
+        </div>
+
+        <!-- Output View Selector -->
+        <div class="output-view-bar">
+          <div class="view-toggles">
+            <button class="view-btn active" data-view="compiled">Compiled Output</button>
+            <button class="view-btn" data-view="diff">Original vs Compiled Diff</button>
+          </div>
+          <div class="export-links">
+            <button id="btn-export-markdown" class="link-btn">Download Markdown</button>
+            <button id="btn-export-json-file" class="link-btn">Download JSON</button>
+          </div>
+        </div>
+
+        <!-- Output Code Display -->
+        <div class="output-container">
+          <pre class="code-block" id="compiled-display"><code>Enter a prompt in Step 1 to compile.</code></pre>
+          <div class="diff-container" id="diff-display" style="display:none;"></div>
+        </div>
+      </section>
+
     </main>
 
-    <!-- Notification Toast -->
-    <div id="toast" class="toast hidden"></div>
+    <!-- Collapsible Audit & Diagnostics Drawer -->
+    <aside class="audit-drawer collapsed" id="audit-drawer" aria-label="System Diagnostics">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <span class="drawer-title">Audit, Economics & Drift Ledger</span>
+          <span class="drawer-badge" id="audit-valid-badge">4D Status: Clean</span>
+        </div>
+        <div class="drawer-controls">
+          <button class="tab-pill active" data-tab="validation">4D Validation</button>
+          <button class="tab-pill" data-tab="quota">Quota Economics</button>
+          <button class="tab-pill" data-tab="ledger">Spec-Drift Ledger</button>
+          <button class="tab-pill" data-tab="json">Raw JSON</button>
+          <button id="btn-close-drawer" class="btn-icon" title="Close drawer">✕</button>
+        </div>
+      </div>
 
-    <!-- Status & Keyboard Footer -->
-    <footer class="app-footer">
-      <div class="shortcuts-row">
-        <span class="shortcut"><kbd>j</kbd><kbd>k</kbd> Select</span>
-        <span class="shortcut-sep">•</span>
-        <span class="shortcut"><kbd>a</kbd> Accept</span>
-        <span class="shortcut"><kbd>r</kbd> Reject</span>
-        <span class="shortcut"><kbd>e</kbd> Edit</span>
-        <span class="shortcut"><kbd>d</kbd> Defer</span>
-        <span class="shortcut-sep">•</span>
-        <span class="shortcut"><kbd>/</kbd> Focus Prompt</span>
-        <span class="shortcut"><kbd>Ctrl+Enter</kbd> Run</span>
+      <div class="drawer-content">
+        <!-- Tab 1: 4D Validation -->
+        <div class="drawer-tab-pane active" id="tab-pane-validation">
+          <div class="dim-grid">
+            <div class="dim-card" id="card-dim-preservation">
+              <div class="dim-header"><strong>Preservation</strong><span class="dim-status" id="status-dim-p">PASS</span></div>
+              <p class="dim-detail" id="detail-dim-p">All original user intent terms preserved.</p>
+            </div>
+            <div class="dim-card" id="card-dim-interpretation">
+              <div class="dim-header"><strong>Interpretation</strong><span class="dim-status" id="status-dim-i">PASS</span></div>
+              <p class="dim-detail" id="detail-dim-i">Actors, data entities, and constraints grounded.</p>
+            </div>
+            <div class="dim-card" id="card-dim-safety">
+              <div class="dim-header"><strong>Safety & Risk</strong><span class="dim-status" id="status-dim-s">PASS</span></div>
+              <p class="dim-detail" id="detail-dim-s">Zero ungrounded payments or security inventions.</p>
+            </div>
+            <div class="dim-card" id="card-dim-completeness">
+              <div class="dim-header"><strong>Completeness</strong><span class="dim-status" id="status-dim-c">PASS</span></div>
+              <p class="dim-detail" id="detail-dim-c">Acceptance criteria and self-test verified.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Quota Economics -->
+        <div class="drawer-tab-pane" id="tab-pane-quota" style="display:none;">
+          <div class="quota-grid">
+            <div class="quota-metric"><span class="q-label">Clarity</span><strong id="q-clarity">--/100</strong></div>
+            <div class="quota-metric"><span class="q-label">Completeness</span><strong id="q-completeness">--/100</strong></div>
+            <div class="quota-metric"><span class="q-label">Efficiency</span><strong id="q-efficiency">--/100</strong></div>
+            <div class="quota-metric"><span class="q-label">Scope Control</span><strong id="q-scope">--/100</strong></div>
+            <div class="quota-metric"><span class="q-label">Verifiability</span><strong id="q-verifiability">--/100</strong></div>
+            <div class="quota-metric"><span class="q-label">Estimated Turns</span><strong id="q-turns">1.0</strong></div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Spec-Drift Ledger -->
+        <div class="drawer-tab-pane" id="tab-pane-ledger" style="display:none;">
+          <div class="ledger-stats">
+            <span id="ledger-coverage">Coverage: 100%</span>
+            <span id="ledger-implemented">0 implemented</span>
+            <span id="ledger-contradicted">0 contradicted</span>
+          </div>
+          <div class="ledger-rows" id="ledger-entries">
+            <p class="empty-note">No cross-session drift detected.</p>
+          </div>
+        </div>
+
+        <!-- Tab 4: Raw JSON -->
+        <div class="drawer-tab-pane" id="tab-pane-json" style="display:none;">
+          <pre class="json-code" id="raw-json-display"><code>{}</code></pre>
+        </div>
       </div>
-      <div class="footer-right">
-        <span class="engine-tag">Lemonade Integrity Engine</span>
-        <span class="footer-sep">•</span>
-        <span>Deterministic Verification Core</span>
-      </div>
-    </footer>
+    </aside>
+
+    <!-- Global Toast Popup -->
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   </div>
 
   <script src="app.js"></script>

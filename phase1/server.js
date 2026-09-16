@@ -21,8 +21,12 @@ const server = http.createServer((req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host ?? "localhost"}`);
   const pathname = parsedUrl.pathname;
 
-  // CORS headers for browser/web-ui clients
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // Restricted CORS: permit loopback or configured origins
+  const origin = req.headers.origin;
+  const isLoopbackOrigin = origin && (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin));
+  const allowedOrigin = process.env.ALLOWED_ORIGIN || (isLoopbackOrigin ? origin : `http://${HOST}:${PORT}`);
+
+  res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
 
@@ -30,6 +34,19 @@ const server = http.createServer((req, res) => {
     res.writeHead(204);
     res.end();
     return;
+  }
+
+  // Enforce auth token when binding beyond loopback interface
+  if (HOST !== "127.0.0.1" && HOST !== "localhost") {
+    const requiredToken = process.env.LEMONADE_AUTH_TOKEN || process.env.TOKEN_TRIM_AUTH_TOKEN;
+    if (requiredToken) {
+      const auth = req.headers["authorization"] || "";
+      if (auth !== `Bearer ${requiredToken}`) {
+        res.writeHead(401, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized: local auth token required when bound beyond loopback" }));
+        return;
+      }
+    }
   }
 
   // Health check

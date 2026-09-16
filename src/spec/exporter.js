@@ -88,22 +88,22 @@ function inferNegativeConstraints(spec, rawText) {
 
   const lower = String(rawText ?? "").toLowerCase();
 
-  // Guard against unrequested frameworks
+  // Guard against unrequested frameworks if explicitly requested or plain JS specified
   if (lower.includes("no framework") || lower.includes("without framework") || lower.includes("vanilla") || lower.includes("plain js")) {
     if (!negativeList.some((n) => n.toLowerCase().includes("framework"))) {
       negativeList.push("DO NOT use any external libraries or frameworks (no React, Vue, Tailwind, Bootstrap, jQuery).");
     }
   }
 
-  // Guard against unrequested backend / database
-  if (!lower.includes("backend") && !lower.includes("server") && !lower.includes("api") && !lower.includes("sql") && !lower.includes("database")) {
+  // Guard against backend if user explicitly requested frontend only / no backend
+  if (lower.includes("no backend") || lower.includes("without backend") || lower.includes("no server") || lower.includes("frontend only") || lower.includes("client only")) {
     if (!negativeList.some((n) => n.toLowerCase().includes("backend"))) {
       negativeList.push("DO NOT build backend servers, cloud APIs, or database connections for V1.");
     }
   }
 
-  // Guard against unrequested authentication
-  if (!lower.includes("login") && !lower.includes("auth") && !lower.includes("password") && !lower.includes("account") && !lower.includes("sso")) {
+  // Guard against authentication if user explicitly requested no login / no auth
+  if (lower.includes("no auth") || lower.includes("without auth") || lower.includes("no login") || lower.includes("without login") || lower.includes("no account")) {
     if (!negativeList.some((n) => n.toLowerCase().includes("auth") || n.toLowerCase().includes("login"))) {
       negativeList.push("DO NOT implement user authentication, login screens, or multi-user accounts for V1.");
     }
@@ -154,8 +154,8 @@ export function exportToMarkdown(spec, { mode = "agent" } = {}) {
 
   // 4. Must Build — Positive Scope (Rule 3.2)
   const reqs = spec.allItems().filter((i) =>
-    i.category === ITEM_CATEGORY.REQUIREMENT &&
-    i.provenance === PROVENANCE.USER_STATED &&
+    (i.category === ITEM_CATEGORY.REQUIREMENT || i.category === ITEM_CATEGORY.ACCEPTED_DECISION) &&
+    (i.provenance === PROVENANCE.USER_STATED || i.status === STATUS.ACCEPTED) &&
     i.status !== STATUS.REJECTED &&
     i.scope === SCOPE.V1
   );
@@ -212,6 +212,9 @@ export function exportToMarkdown(spec, { mode = "agent" } = {}) {
   } else if (mode === "agent" || mode === "builder") {
     sections.push("## Explicit Assumptions & Ambiguity Resolution (Rule 3.5 — Visible)\n");
     sections.push("* [ASSUMED: Single-user local-first execution; data persists in browser localStorage with zero external cloud dependencies.]");
+    if (!rawLower.includes("login") && !rawLower.includes("auth") && !rawLower.includes("password") && !rawLower.includes("account")) {
+      sections.push("* [ASSUMED: Authentication is not defined; defaulting to single-user local execution for this draft.]");
+    }
     if (rawLower.includes("clean") || rawLower.includes("modern") || rawLower.includes("simple")) {
       sections.push("* [ASSUMED: Visual aesthetic interpreted conservatively — clean sans-serif typography, soft neutral palette, standard system components.]");
     }

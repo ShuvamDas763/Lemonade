@@ -104,6 +104,20 @@ export function extractRequirements(rawPrompt) {
     },
   };
 
+  extracted.proposals = [];
+  const addProposal = (id, text, category, confidence, rationale) => {
+    extracted.proposals.push({
+      id,
+      text,
+      category,
+      provenance: "system-recommended",
+      confidence: confidence || 0.70,
+      rationale: rationale || "Domain pattern recommendation",
+      sourceSpans: [],
+      requiresApproval: true,
+    });
+  };
+
   const addEntity = (id, category, actor, action, object, condition, result, dataFields, priority, scopeDesc, rawSnippet) => {
     extracted.entities.push({
       id,
@@ -143,289 +157,424 @@ export function extractRequirements(rawPrompt) {
   // 2. Functional Requirements, Workflows & Business Rules
   // -------------------------------------------------------------
 
-  // Domain A: College Lost and Found (Section 40)
+  // Domain A: College Lost and Found
   if (domains.isLostFound) {
-    // REQ-LF-01: Post lost/found item with fields
-    const reqPost = "Authenticated users can post lost/found items with photo, title, description, location and date.";
-    extracted.v1Requirements.push(reqPost);
-    addEntity("REQ-LF-01", "functional", "Student/User", "Post", "Lost/Found Item", "", "Item published", ["photo", "title", "description", "location", "date"], "MUST", "V1", "post lost or found things with a photo, title, description, location and date");
+    if (/\b(post|photo|title|description|location|date|lost\s+or\s+found)\b/i.test(rawLower)) {
+      const reqPost = "Authenticated users can post lost/found items with photo, title, description, location and date.";
+      extracted.v1Requirements.push(reqPost);
+      addEntity("REQ-LF-01", "functional", "Student/User", "Post", "Lost/Found Item", "", "Item published", ["photo", "title", "description", "location", "date"], "MUST", "V1", "post lost or found things with a photo, title, description, location and date");
+    } else {
+      addProposal("PROP-LF-01", "Consider allowing users to post lost/found items with photo, title, location, and date", "functional", 0.75, "Standard capability for lost and found service");
+    }
 
-    // REQ-LF-02: Search and filtering
-    const reqSearch = "Homepage shows recent listings with search and filters for lost/found and category.";
-    extracted.v1Requirements.push(reqSearch);
-    addEntity("REQ-LF-02", "functional", "Student/User", "Search/Filter", "Recent Post Listings", "", "Filtered listings", ["lost/found status", "category"], "MUST", "V1", "search recent posts and filter by lost/found and category");
+    if (/\b(search|filter|recent)\b/i.test(rawLower)) {
+      const reqSearch = "Homepage shows recent listings with search and filters for lost/found and category.";
+      extracted.v1Requirements.push(reqSearch);
+      addEntity("REQ-LF-02", "functional", "Student/User", "Search/Filter", "Recent Post Listings", "", "Filtered listings", ["lost/found status", "category"], "MUST", "V1", "search recent posts and filter by lost/found and category");
+    } else {
+      addProposal("PROP-LF-02", "Consider listing recent posts with search and category filters", "functional", 0.70, "Helps users locate matching lost items");
+    }
 
-    // REQ-LF-03: Claim request & state transition workflow
-    const reqClaim = "Users can submit claims; item owners accept/reject. Accepted claims mark items returned and block further claims.";
-    extracted.v1Requirements.push(reqClaim);
-    addEntity("RULE-LF-01", "business_rule", "Owner/Claimant", "Claim Workflow", "Item Status", "Claim accepted", "Mark item returned and block further claims", ["claim request", "returned state"], "MUST", "V1", "send a claim request. The owner can accept or reject it. If accepted, mark the item returned and don't allow more claims");
+    if (/\b(claim|returned)\b/i.test(rawLower)) {
+      const reqClaim = "Users can submit claims; item owners accept/reject. Accepted claims mark items returned and block further claims.";
+      extracted.v1Requirements.push(reqClaim);
+      addEntity("RULE-LF-01", "business_rule", "Owner/Claimant", "Claim Workflow", "Item Status", "Claim accepted", "Mark item returned and block further claims", ["claim request", "returned state"], "MUST", "V1", "send a claim request. The owner can accept or reject it. If accepted, mark the item returned and don't allow more claims");
+      extracted.constraints.push("Returned items cannot receive further claims.");
+    } else {
+      addProposal("PROP-LF-03", "Consider a claim request workflow where owners accept/reject claims", "workflow", 0.70, "Enables secure resolution of found items");
+    }
 
-    // REQ-LF-04: Edit/delete ownership restrictions & user report
-    const reqOwner = "Users can edit/delete only their own posts and report suspicious/inappropriate posts.";
-    extracted.v1Requirements.push(reqOwner);
-    extracted.constraints.push("Users can edit and delete only their own posts.");
-    addEntity("ROLE-LF-01", "role_permission", "User", "Edit/Delete/Report", "Posts", "Only owner can edit/delete", "Own posts modified; suspicious posts reported", [], "MUST", "V1", "Users should only edit/delete their own posts... Users can report suspicious posts");
+    if (/\b(own\s+posts|only\s+edit|edit.*delete|report)\b/i.test(rawLower)) {
+      const reqOwner = "Users can edit/delete only their own posts and report suspicious/inappropriate posts.";
+      extracted.v1Requirements.push(reqOwner);
+      extracted.constraints.push("Users can edit and delete only their own posts.");
+      addEntity("ROLE-LF-01", "role_permission", "User", "Edit/Delete/Report", "Posts", "Only owner can edit/delete", "Own posts modified; suspicious posts reported", [], "MUST", "V1", "Users should only edit/delete their own posts... Users can report suspicious posts");
+    } else {
+      addProposal("PROP-LF-04", "Restrict edit/delete to original poster and allow reporting suspicious posts", "role_permission", 0.65, "Prevents vandalism and malicious edits");
+    }
 
-    // REQ-LF-05: User authentication to prevent spam
-    const reqAuth = "User authentication/login to prevent unauthorized posting or spam.";
-    extracted.v1Requirements.push(reqAuth);
-    addEntity("REQ-LF-05", "functional", "User", "Authenticate", "User Account", "", "Authenticated access", ["login credentials"], "MUST", "V1", "There should be login so random people don't spam it");
+    if (/\b(login|auth|spam)\b/i.test(rawLower)) {
+      const reqAuth = "User authentication/login to prevent unauthorized posting or spam.";
+      extracted.v1Requirements.push(reqAuth);
+      addEntity("REQ-LF-05", "functional", "User", "Authenticate", "User Account", "", "Authenticated access", ["login credentials"], "MUST", "V1", "There should be login so random people don't spam it");
+    } else {
+      addProposal("PROP-LF-05", "Consider user authentication to prevent spam and verify student identity", "security", 0.65, "Protects service integrity");
+    }
 
-    // REQ-LF-06: Admin moderation and reports
-    const reqAdmin = "Admin can remove fake/inappropriate posts and view reports.";
-    extracted.v1Requirements.push(reqAdmin);
-    addEntity("ROLE-LF-02", "role_permission", "Admin", "Moderate", "Posts/Reports", "Admin privileges", "Fake posts removed and reports reviewed", [], "MUST", "V1", "Admin should be able to remove fake/inappropriate posts and see reports");
+    if (/\b(admin|fake|inappropriate|remove)\b/i.test(rawLower)) {
+      const reqAdmin = "Admin can remove fake/inappropriate posts and view reports.";
+      extracted.v1Requirements.push(reqAdmin);
+      addEntity("ROLE-LF-02", "role_permission", "Admin", "Moderate", "Posts/Reports", "Admin privileges", "Fake posts removed and reports reviewed", [], "MUST", "V1", "Admin should be able to remove fake/inappropriate posts and see reports");
+    } else {
+      addProposal("PROP-LF-06", "Consider admin tools to remove fake posts and view moderation reports", "role_permission", 0.65, "Provides administrative control");
+    }
 
-    // Negative constraints
-    extracted.constraints.push("Returned items cannot receive further claims.");
+    if (/\b(official|college|social|mobile)\b/i.test(rawLower)) {
+      extracted.ux.push("Clean, modern, mobile-friendly UI with an official college-service feel rather than social-media styling.");
+    }
+    if (/\breact\b/i.test(rawLower)) {
+      extracted.techDirection.push("React preferred for frontend.");
+    }
+    if (/\b(backend|database|local)\b/i.test(rawLower)) {
+      extracted.techDirection.push("Use the simplest practical local backend and database.");
+    }
+    if (/\bnotifications?\b/i.test(rawLower)) {
+      extracted.optional.push("In-app notifications if simple; otherwise show claim updates on the website.");
+    }
+    if (/\b(email|chat|payment|map|later|future)\b/i.test(rawLower)) {
+      extracted.scope.push("Email notifications, chat, payments and maps are future features and are out of scope for V1.");
+    }
+    if (/\b(basic|first)\b/i.test(rawLower)) {
+      extracted.boundaries.push("Build the basic working V1 first.");
+      extracted.boundaries.push("Do not add functionality outside the requested scope.");
+    }
 
-    // UX
-    extracted.ux.push("Clean, modern, mobile-friendly UI with an official college-service feel rather than social-media styling.");
-
-    // Tech direction
-    extracted.techDirection.push("React preferred for frontend.");
-    extracted.techDirection.push("Use the simplest practical local backend and database.");
-
-    // Optional / Conditional
-    extracted.optional.push("In-app notifications if simple; otherwise show claim updates on the website.");
-
-    // Future
-    extracted.scope.push("Email notifications, chat, payments and maps are future features and are out of scope for V1.");
-
-    // Boundaries
-    extracted.boundaries.push("Build the basic working V1 first.");
-    extracted.boundaries.push("Do not add functionality outside the requested scope.");
-
-    // Acceptance criteria
-    extracted.acceptanceCriteria.push("Lost/found posting with photo, title, description, location, and date works.");
-    extracted.acceptanceCriteria.push("Listing search and filtering by status and category work.");
-    extracted.acceptanceCriteria.push("Claim request submission, owner accept/reject, item returned state transition, and claim blocking work.");
-    extracted.acceptanceCriteria.push("Ownership editing/deletion restrictions and user post reporting work.");
-    extracted.acceptanceCriteria.push("Admin moderation (removing fake posts and viewing reports) works.");
     extracted.acceptanceCriteria.push("Core V1 runs locally and is mobile-friendly.");
+    if (/\b(post|photo)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Lost/found posting with photo, title, description, location, and date works.");
+    if (/\b(search|filter)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Listing search and filtering by status and category work.");
+    if (/\bclaim\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Claim request submission, owner accept/reject, item returned state transition, and claim blocking work.");
+    if (/\b(own\s+posts|report)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Ownership editing/deletion restrictions and user post reporting work.");
+    if (/\b(admin|fake)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Admin moderation (removing fake posts and viewing reports) works.");
   }
 
   // Domain B: College Library System
   if (domains.isLibrary) {
-    const reqAuth = "Role-based authentication: separate login for students and librarian/admin.";
-    extracted.v1Requirements.push(reqAuth);
-    addEntity("REQ-LIB-01", "role_permission", "Student/Librarian", "Authenticate", "Portals", "", "Role-specific access", [], "MUST", "V1", "separate login for students and librarian/admin");
+    if (/\b(login|auth|student|librarian|admin)\b/i.test(rawLower)) {
+      const reqAuth = "Role-based authentication: separate login for students and librarian/admin.";
+      extracted.v1Requirements.push(reqAuth);
+      addEntity("REQ-LIB-01", "role_permission", "Student/Librarian", "Authenticate", "Portals", "", "Role-specific access", [], "MUST", "V1", "separate login for students and librarian/admin");
+      const reqPerm = "Role-based permissions separating student capabilities from librarian/admin capabilities.";
+      extracted.v1Requirements.push(reqPerm);
+      addEntity("ROLE-LIB-01", "role_permission", "System", "Enforce Permissions", "Capabilities", "", "Strict separation of roles", [], "MUST", "V1", "role-based permissions");
+    } else {
+      addProposal("PROP-LIB-01", "Consider role-based portals separating student access from librarian administration", "role_permission", 0.70, "Standard workflow for institutional libraries");
+    }
 
-    const reqPerm = "Role-based permissions separating student capabilities from librarian/admin capabilities.";
-    extracted.v1Requirements.push(reqPerm);
-    addEntity("ROLE-LIB-01", "role_permission", "System", "Enforce Permissions", "Capabilities", "", "Strict separation of roles", [], "MUST", "V1", "role-based permissions");
+    if (/\b(search|find|book|author)\b/i.test(rawLower)) {
+      const reqSearch = "Search for books by name or author.";
+      extracted.v1Requirements.push(reqSearch);
+      addEntity("REQ-LIB-02", "functional", "Student/User", "Search", "Books", "", "Matching book results", ["name", "author"], "MUST", "V1", "search for books by name or author");
+    }
 
-    const reqSearch = "Search for books by name or author.";
-    extracted.v1Requirements.push(reqSearch);
-    addEntity("REQ-LIB-02", "functional", "Student/User", "Search", "Books", "", "Matching book results", ["name", "author"], "MUST", "V1", "search for books by name or author");
+    if (/\b(availab|copies|shelf|location)\b/i.test(rawLower)) {
+      const reqDetails = "Display book availability status, number of copies, library shelf location.";
+      extracted.v1Requirements.push(reqDetails);
+      addEntity("DATA-LIB-01", "data", "Book", "Display", "Metadata", "", "Status, copy count, shelf location shown", ["status", "copy count", "shelf location"], "MUST", "V1", "availability status, number of copies, shelf location");
+    } else {
+      addProposal("PROP-LIB-02", "Consider showing shelf locations and available copy counts", "data", 0.65, "Helps students locate physical books");
+    }
 
-    const reqDetails = "Display book availability status, number of copies, library shelf location.";
-    extracted.v1Requirements.push(reqDetails);
-    addEntity("DATA-LIB-01", "data", "Book", "Display", "Metadata", "", "Status, copy count, shelf location shown", ["status", "copy count", "shelf location"], "MUST", "V1", "availability status, number of copies, shelf location");
+    if (/\b(request|issued|borrow)\b/i.test(rawLower)) {
+      const reqRequest = "Students can submit book requests for books currently issued to other users.";
+      extracted.v1Requirements.push(reqRequest);
+      addEntity("REQ-LIB-03", "functional", "Student", "Request", "Issued Book", "Book currently issued", "Pending request logged", [], "MUST", "V1", "request unavailable/issued books");
+    }
 
-    const reqRequest = "Students can submit book requests for books currently issued to other users.";
-    extracted.v1Requirements.push(reqRequest);
-    addEntity("REQ-LIB-03", "functional", "Student", "Request", "Issued Book", "Book currently issued", "Pending request logged", [], "MUST", "V1", "request unavailable/issued books");
+    if (/\b(approv|librarian)\b/i.test(rawLower)) {
+      const reqApprove = "Librarian approval workflow for book requests once returned.";
+      extracted.v1Requirements.push(reqApprove);
+      addEntity("RULE-LIB-01", "business_rule", "Librarian", "Approve", "Book Request", "Book returned", "Request approved and book assigned", [], "MUST", "V1", "librarian approval workflow");
+    }
 
-    const reqApprove = "Librarian approval workflow for book requests once returned.";
-    extracted.v1Requirements.push(reqApprove);
-    addEntity("RULE-LIB-01", "business_rule", "Librarian", "Approve", "Book Request", "Book returned", "Request approved and book assigned", [], "MUST", "V1", "librarian approval workflow");
+    if (/\b(add|remove|edit|catalog)\b/i.test(rawLower) && /\bbook/i.test(rawLower)) {
+      const reqCatalog = "Librarian book catalog management: add new books, remove books, and edit book details.";
+      extracted.v1Requirements.push(reqCatalog);
+      addEntity("REQ-LIB-04", "functional", "Librarian", "Manage", "Book Catalog", "Librarian role", "Catalog updated", ["add", "remove", "edit"], "MUST", "V1", "add new books, remove books, edit book details");
+    }
 
-    const reqCatalog = "Librarian book catalog management: add new books, remove books, and edit book details.";
-    extracted.v1Requirements.push(reqCatalog);
-    addEntity("REQ-LIB-04", "functional", "Librarian", "Manage", "Book Catalog", "Librarian role", "Catalog updated", ["add", "remove", "edit"], "MUST", "V1", "add new books, remove books, edit book details");
+    if (/\b(issued|returned|circulation)\b/i.test(rawLower)) {
+      const reqCirc = "Librarian circulation management: mark books as issued or returned.";
+      extracted.v1Requirements.push(reqCirc);
+      addEntity("RULE-LIB-02", "business_rule", "Librarian", "Circulate", "Book Status", "", "Book marked issued or returned", ["issued", "returned"], "MUST", "V1", "mark books as issued or returned");
+    }
 
-    const reqCirc = "Librarian circulation management: mark books as issued or returned.";
-    extracted.v1Requirements.push(reqCirc);
-    addEntity("RULE-LIB-02", "business_rule", "Librarian", "Circulate", "Book Status", "", "Book marked issued or returned", ["issued", "returned"], "MUST", "V1", "mark books as issued or returned");
+    if (/\b(due|return\s+date|currently\s+issued)\b/i.test(rawLower)) {
+      const reqIssuedView = "Student view displaying currently issued books and return due dates.";
+      extracted.v1Requirements.push(reqIssuedView);
+      addEntity("REQ-LIB-05", "functional", "Student", "View", "Issued Books", "Student authenticated", "Issued books with return dates shown", ["due date"], "MUST", "V1", "student view of issued books and return dates");
+    }
 
-    const reqIssuedView = "Student view displaying currently issued books and return due dates.";
-    extracted.v1Requirements.push(reqIssuedView);
-    addEntity("REQ-LIB-05", "functional", "Student", "View", "Issued Books", "Student authenticated", "Issued books with return dates shown", ["due date"], "MUST", "V1", "student view of issued books and return dates");
+    if (/\bdashboard\b/i.test(rawLower)) {
+      const reqDash = "Librarian administrative dashboard displaying counts of available books, issued books, and pending requests.";
+      extracted.v1Requirements.push(reqDash);
+      addEntity("REQ-LIB-06", "functional", "Librarian", "View Dashboard", "Metrics", "Librarian authenticated", "Counts displayed", ["available count", "issued count", "pending count"], "MUST", "V1", "librarian dashboard counts");
+    } else {
+      addProposal("PROP-LIB-03", "Consider a librarian dashboard showing counts of available, issued, and pending books", "functional", 0.60, "Overview of library circulation");
+    }
 
-    const reqDash = "Librarian administrative dashboard displaying counts of available books, issued books, and pending requests.";
-    extracted.v1Requirements.push(reqDash);
-    addEntity("REQ-LIB-06", "functional", "Librarian", "View Dashboard", "Metrics", "Librarian authenticated", "Counts displayed", ["available count", "issued count", "pending count"], "MUST", "V1", "librarian dashboard counts");
+    if (/\b(homepage|search\s+bar)\b/i.test(rawLower)) {
+      extracted.ux.push("Simple, modern homepage layout featuring a prominent central search bar.");
+    }
+    if (/\breact\b/i.test(rawLower)) {
+      extracted.techDirection.push("React is preferred for the frontend.");
+    }
+    if (/\b(backend|database|local|laptop)\b/i.test(rawLower)) {
+      extracted.techDirection.push("Choose a simple, free/easy-to-run backend and database (e.g. Node/Express with SQLite) that is easy to run locally.");
+    }
+    if (/\b(payments?|barcode|email|later|future)\b/i.test(rawLower)) {
+      extracted.scope.push("Online payments, barcode scanners, and sending emails are future features and are out of scope for V1.");
+    }
+    if (/\b(basic|simple)\b/i.test(rawLower)) {
+      extracted.boundaries.push("Keep V1 simple and locally runnable.");
+      extracted.boundaries.push("Stop once the V1 requirements work end-to-end. Do not proactively build future features.");
+    }
 
-    extracted.ux.push("Simple, modern homepage layout featuring a prominent central search bar.");
-    extracted.techDirection.push("React is preferred for the frontend.");
-    extracted.techDirection.push("Choose a simple, free/easy-to-run backend and database (e.g. Node/Express with SQLite) that is easy to run locally.");
-    extracted.scope.push("Online payments, barcode scanners, and sending emails are future features and are out of scope for V1.");
-    extracted.boundaries.push("Keep V1 simple and locally runnable.");
-    extracted.boundaries.push("Stop once the V1 requirements work end-to-end. Do not proactively build future features.");
-
-    extracted.acceptanceCriteria.push("Students and librarians can authenticate into their respective portals.");
-    extracted.acceptanceCriteria.push("Users can search for books by name or author.");
-    extracted.acceptanceCriteria.push("Book availability status, copy count, and shelf location are displayed.");
-    extracted.acceptanceCriteria.push("Students can request issued books and librarians can approve requests upon return.");
-    extracted.acceptanceCriteria.push("Librarians can add, edit, remove, and mark books as issued or returned.");
-    extracted.acceptanceCriteria.push("Students can view their currently issued books and return due dates.");
-    extracted.acceptanceCriteria.push("Librarian dashboard displays counts of available, issued, and pending books.");
     extracted.acceptanceCriteria.push("Core flows work end-to-end.");
+    if (/\b(login|auth)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Students and librarians can authenticate into their respective portals.");
+    if (/\bsearch\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Users can search for books by name or author.");
+    if (/\bavailab/i.test(rawLower)) extracted.acceptanceCriteria.push("Book availability status, copy count, and shelf location are displayed.");
+    if (/\brequest\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Students can request issued books and librarians can approve requests upon return.");
+    if (/\b(add|catalog|issued)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Librarians can add, edit, remove, and mark books as issued or returned.");
+    if (/\b(due|return\s+date)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Students can view their currently issued books and return due dates.");
+    if (/\bdashboard\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Librarian dashboard displays counts of available, issued, and pending books.");
   }
 
   // Domain C: College Canteen
   if (domains.isCanteen) {
-    const reqMenu = "Display today's canteen menu with item names, prices, and availability status (available vs sold out).";
-    extracted.v1Requirements.push(reqMenu);
-    addEntity("DATA-CAN-01", "data", "Student/User", "View", "Menu", "", "Item name, price, status shown", ["name", "price", "availability"], "MUST", "V1", "menu with item names, prices, availability");
+    if (/\b(menu|items?|price|available|sold\s+out)\b/i.test(rawLower)) {
+      const reqMenu = "Display today's canteen menu with item names, prices, and availability status (available vs sold out).";
+      extracted.v1Requirements.push(reqMenu);
+      addEntity("DATA-CAN-01", "data", "Student/User", "View", "Menu", "", "Item name, price, status shown", ["name", "price", "availability"], "MUST", "V1", "menu with item names, prices, availability");
+    }
 
-    const reqOrder = "Students can select menu items, add quantities, and submit a pickup order.";
-    extracted.v1Requirements.push(reqOrder);
-    addEntity("REQ-CAN-01", "functional", "Student", "Create Order", "Menu Items", "Items available", "Pickup order created", ["item", "quantity"], "MUST", "V1", "select items, add quantities, submit pickup order");
+    if (/\b(order|pickup|quantit)\b/i.test(rawLower)) {
+      const reqOrder = "Students can select menu items, add quantities, and submit a pickup order.";
+      extracted.v1Requirements.push(reqOrder);
+      addEntity("REQ-CAN-01", "functional", "Student", "Create Order", "Menu Items", "Items available", "Pickup order created", ["item", "quantity"], "MUST", "V1", "select items, add quantities, submit pickup order");
+    }
 
-    const reqToken = "Order placement generates a simple order number or pickup token.";
-    extracted.v1Requirements.push(reqToken);
-    addEntity("DATA-CAN-02", "data", "System", "Generate", "Order Token", "Order placed", "Order number / token displayed", ["order number", "token"], "MUST", "V1", "order number or pickup token");
+    if (/\b(token|order\s+number)\b/i.test(rawLower)) {
+      const reqToken = "Order placement generates a simple order number or pickup token.";
+      extracted.v1Requirements.push(reqToken);
+      addEntity("DATA-CAN-02", "data", "System", "Generate", "Order Token", "Order placed", "Order number / token displayed", ["order number", "token"], "MUST", "V1", "order number or pickup token");
+    } else {
+      addProposal("PROP-CAN-01", "Generate a pickup order number or token for student collection", "data", 0.70, "Facilitates fast counter pickup");
+    }
 
-    const reqDash = "Canteen staff dashboard to view incoming orders and update order status (preparing, ready for pickup, completed).";
-    extracted.v1Requirements.push(reqDash);
-    addEntity("RULE-CAN-01", "business_rule", "Canteen Staff", "Update Status", "Orders", "Staff role", "Order transitions: preparing -> ready -> completed", ["status"], "MUST", "V1", "preparing, ready for pickup, completed");
+    if (/\b(staff|person|dashboard|preparing|ready|completed)\b/i.test(rawLower)) {
+      const reqDash = "Canteen staff dashboard to view incoming orders and update order status (preparing, ready for pickup, completed).";
+      extracted.v1Requirements.push(reqDash);
+      addEntity("RULE-CAN-01", "business_rule", "Canteen Staff", "Update Status", "Orders", "Staff role", "Order transitions: preparing -> ready -> completed", ["status"], "MUST", "V1", "preparing, ready for pickup, completed");
+    }
 
-    const reqAvail = "Canteen staff can mark menu items as available or sold out.";
-    extracted.v1Requirements.push(reqAvail);
-    addEntity("REQ-CAN-02", "functional", "Canteen Staff", "Toggle", "Item Availability", "Staff role", "Item status updated", ["available", "sold out"], "MUST", "V1", "mark menu items available or sold out");
+    if (/\b(stock|availab|sold\s+out)\b/i.test(rawLower)) {
+      const reqAvail = "Canteen staff can mark menu items as available or sold out.";
+      extracted.v1Requirements.push(reqAvail);
+      addEntity("REQ-CAN-02", "functional", "Canteen Staff", "Toggle", "Item Availability", "Staff role", "Item status updated", ["available", "sold out"], "MUST", "V1", "mark menu items available or sold out");
+    }
 
-    const reqAuth = "Simple admin login for canteen staff to access order management and menu controls.";
-    extracted.v1Requirements.push(reqAuth);
-    addEntity("ROLE-CAN-01", "role_permission", "Staff", "Authenticate", "Admin Panel", "", "Staff access granted", [], "MUST", "V1", "admin login for canteen staff");
+    if (/\b(staff.*login|admin|login.*canteen|canteen.*person.*login)\b/i.test(rawLower) || (/\blogin\b/i.test(rawLower) && /\b(staff|canteen)\b/i.test(rawLower))) {
+      const reqAuth = "Simple admin login for canteen staff to access order management and menu controls.";
+      extracted.v1Requirements.push(reqAuth);
+      addEntity("ROLE-CAN-01", "role_permission", "Staff", "Authenticate", "Admin Panel", "", "Staff access granted", [], "MUST", "V1", "admin login for canteen staff");
+    } else {
+      addProposal("PROP-CAN-02", "Require canteen staff password to update stock and orders", "security", 0.65, "Prevents unauthorized menu changes");
+    }
 
-    // Constraints & Boundaries
-    extracted.constraints.push("Students do not need user accounts or logins for V1.");
-    extracted.constraints.push("Pickup only; no delivery functionality.");
-    extracted.boundaries.push("Run locally with a simple setup.");
-    extracted.boundaries.push("Stop once the V1 requirements work end-to-end. Do not proactively build future features.");
+    if (/\b(no\s+accounts?|dont\s+need|without\s+login|quick\s+to\s+use)\b/i.test(rawLower)) {
+      extracted.constraints.push("Students do not need user accounts or logins for V1.");
+    }
+    if (/\bpickup\b/i.test(rawLower)) {
+      extracted.constraints.push("Pickup only; no delivery functionality.");
+    }
+    if (/\b(local|simple)\b/i.test(rawLower)) {
+      extracted.boundaries.push("Run locally with a simple setup.");
+      extracted.boundaries.push("Stop once the V1 requirements work end-to-end. Do not proactively build future features.");
+    }
+    if (/\b(snacks|lunch|tabs)\b/i.test(rawLower)) {
+      extracted.optional.push("Categorized menu tabs (snacks, lunch, drinks).");
+    }
+    if (/\b(veg|non\s*veg|drinks|filter)\b/i.test(rawLower)) {
+      extracted.optional.push("Filter menu items by dietary type (veg, non-veg, drinks).");
+    }
+    if (/\b(prep.*time|preparation\s+time)\b/i.test(rawLower)) {
+      extracted.optional.push("Display estimated order preparation time.");
+    }
+    if (/\bmobile\b/i.test(rawLower)) {
+      extracted.ux.push("Mobile-friendly interface optimized for students ordering on phones.");
+    }
+    if (/\badmin\b/i.test(rawLower)) {
+      extracted.ux.push("Simple, clean admin dashboard for canteen staff.");
+    }
+    if (/\breact\b/i.test(rawLower)) {
+      extracted.techDirection.push("React is preferred for the frontend.");
+    }
+    if (/\b(backend|database|local)\b/i.test(rawLower)) {
+      extracted.techDirection.push("Simple, lightweight backend and database (e.g. Node/Express with SQLite) easy to run locally.");
+    }
+    if (/\b(payment|delivery|later|future)\b/i.test(rawLower)) {
+      extracted.scope.push("Online payment gateway integration is out of scope for V1.");
+      extracted.scope.push("Delivery tracking and student accounts are out of scope for V1.");
+    }
 
-    // Optional
-    extracted.optional.push("Categorized menu tabs (snacks, lunch, drinks).");
-    extracted.optional.push("Filter menu items by dietary type (veg, non-veg, drinks).");
-    extracted.optional.push("Display estimated order preparation time.");
-
-    // UX
-    extracted.ux.push("Mobile-friendly interface optimized for students ordering on phones.");
-    extracted.ux.push("Simple, clean admin dashboard for canteen staff.");
-
-    // Tech
-    extracted.techDirection.push("React is preferred for the frontend.");
-    extracted.techDirection.push("Simple, lightweight backend and database (e.g. Node/Express with SQLite) easy to run locally.");
-
-    // Scope
-    extracted.scope.push("Online payment gateway integration is out of scope for V1.");
-    extracted.scope.push("Delivery tracking and student accounts are out of scope for V1.");
-
-    // Acceptance
-    extracted.acceptanceCriteria.push("Canteen menu displays items, prices, and availability status.");
-    extracted.acceptanceCriteria.push("Students can place pickup orders and receive an order number/pickup token without logging in.");
-    extracted.acceptanceCriteria.push("Canteen staff can authenticate into the admin panel.");
-    extracted.acceptanceCriteria.push("Canteen staff can update order statuses (preparing, ready, completed) and toggle item availability.");
     extracted.acceptanceCriteria.push("Core flows work end-to-end locally.");
+    if (/\bmenu\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Canteen menu displays items, prices, and availability status.");
+    if (/\border\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Students can place pickup orders and receive an order number/pickup token without logging in.");
+    if (/\b(admin|staff)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Canteen staff can authenticate into the admin panel.");
+    if (/\b(preparing|ready|sold\s+out)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Canteen staff can update order statuses (preparing, ready, completed) and toggle item availability.");
   }
 
   // Domain D: Study Partner Platform
   if (domains.isStudyPartner) {
-    const reqAuth = "User registration/login.";
-    extracted.v1Requirements.push(reqAuth);
-    addEntity("REQ-SP-01", "functional", "Student", "Authenticate", "Account", "", "Student authenticated", [], "MUST", "V1", "login should be there");
+    if (/\b(login|auth|account)\b/i.test(rawLower)) {
+      const reqAuth = "User registration/login.";
+      extracted.v1Requirements.push(reqAuth);
+      addEntity("REQ-SP-01", "functional", "Student", "Authenticate", "Account", "", "Student authenticated", [], "MUST", "V1", "login should be there");
+    } else {
+      addProposal("PROP-SP-01", "Consider student account login to protect profiles and messages", "security", 0.70, "Secures student personal profiles");
+    }
 
-    let fields = [];
-    if (/\bname\b/i.test(rawLower)) fields.push("name");
-    if (/\bcourse\b/i.test(rawLower)) fields.push("course");
-    if (/\bcollege\b/i.test(rawLower)) fields.push("college");
-    if (/\bsubjects?\b/i.test(rawLower)) fields.push("subjects");
-    let fieldDesc = fields.length > 0 ? ` containing ${fields.join(", ").replace(/, ([^,]*)$/, ", and $1")}` : "";
-    const reqProfiles = `Student profiles${fieldDesc}.`;
-    extracted.v1Requirements.push(reqProfiles);
-    addEntity("DATA-SP-01", "data", "Student", "Create/View", "Profile", "", "Profile with fields", fields, "MUST", "V1", "profile with name, course, college, subjects");
+    if (/\b(profile|name|course|subject)\b/i.test(rawLower)) {
+      let fields = [];
+      if (/\bname\b/i.test(rawLower)) fields.push("name");
+      if (/\bcourse\b/i.test(rawLower)) fields.push("course");
+      if (/\bcollege\b/i.test(rawLower)) fields.push("college");
+      if (/\bsubjects?\b/i.test(rawLower)) fields.push("subjects");
+      let fieldDesc = fields.length > 0 ? ` containing ${fields.join(", ").replace(/, ([^,]*)$/, ", and $1")}` : "";
+      const reqProfiles = `Student profiles${fieldDesc}.`;
+      extracted.v1Requirements.push(reqProfiles);
+      addEntity("DATA-SP-01", "data", "Student", "Create/View", "Profile", "", "Profile with fields", fields, "MUST", "V1", "profile with name, course, college, subjects");
+    }
 
-    const reqEdit = "Users can edit only their own profile.";
-    extracted.v1Requirements.push(reqEdit);
-    extracted.constraints.push("Users can edit only their own profile.");
-    addEntity("ROLE-SP-01", "role_permission", "User", "Edit", "Profile", "Only own profile", "Profile updated", [], "MUST", "V1", "edit only their own profile");
+    if (/\b(edit.*own|only.*edit)\b/i.test(rawLower)) {
+      const reqEdit = "Users can edit only their own profile.";
+      extracted.v1Requirements.push(reqEdit);
+      extracted.constraints.push("Users can edit only their own profile.");
+      addEntity("ROLE-SP-01", "role_permission", "User", "Edit", "Profile", "Only own profile", "Profile updated", [], "MUST", "V1", "edit only their own profile");
+    }
 
-    const reqSearch = "Search students by subject (e.g. maths).";
-    extracted.v1Requirements.push(reqSearch);
-    addEntity("REQ-SP-02", "functional", "Student", "Search", "Students", "", "Matching classmates", ["subject"], "MUST", "V1", "search students by subject");
+    if (/\b(search|subject)\b/i.test(rawLower)) {
+      const reqSearch = "Search students by subject (e.g. maths).";
+      extracted.v1Requirements.push(reqSearch);
+      addEntity("REQ-SP-02", "functional", "Student", "Search", "Students", "", "Matching classmates", ["subject"], "MUST", "V1", "search students by subject");
+    }
 
-    const reqFilter = "Discover and filter study partners from the same college.";
-    extracted.v1Requirements.push(reqFilter);
-    addEntity("REQ-SP-03", "functional", "Student", "Filter", "Classmates", "", "Classmates from same college", ["college"], "MUST", "V1", "filter study partners by college");
+    if (/\b(college|filter)\b/i.test(rawLower)) {
+      const reqFilter = "Discover and filter study partners from the same college.";
+      extracted.v1Requirements.push(reqFilter);
+      addEntity("REQ-SP-03", "functional", "Student", "Filter", "Classmates", "", "Classmates from same college", ["college"], "MUST", "V1", "filter study partners by college");
+    }
 
-    const reqReq = "Send, accept, and respond to study-partner requests.";
-    extracted.v1Requirements.push(reqReq);
-    addEntity("RULE-SP-01", "business_rule", "Student", "Request Connection", "Partner Request", "", "Partnership accepted or declined", [], "MUST", "V1", "send, accept, and respond to requests");
+    if (/\b(request|connect)\b/i.test(rawLower)) {
+      const reqReq = "Send, accept, and respond to study-partner requests.";
+      extracted.v1Requirements.push(reqReq);
+      addEntity("RULE-SP-01", "business_rule", "Student", "Request Connection", "Partner Request", "", "Partnership accepted or declined", [], "MUST", "V1", "send, accept, and respond to requests");
+    }
 
-    const reqChat = "Chat system between accepted study partners.";
-    extracted.v1Requirements.push(reqChat);
-    addEntity("REQ-SP-04", "functional", "Student", "Message", "Chat", "Partnership accepted", "Messages exchanged", [], "MUST", "V1", "chat between accepted partners");
+    if (/\bchat\b/i.test(rawLower)) {
+      const reqChat = "Chat system between accepted study partners.";
+      extracted.v1Requirements.push(reqChat);
+      addEntity("REQ-SP-04", "functional", "Student", "Message", "Chat", "Partnership accepted", "Messages exchanged", [], "MUST", "V1", "chat between accepted partners");
+    } else {
+      addProposal("PROP-SP-02", "Consider in-app messaging once a partner request is accepted", "workflow", 0.65, "Allows study coordination without leaving the site");
+    }
 
-    const reqRec = "Homepage displaying recommended study partners based on shared subjects.";
-    extracted.v1Requirements.push(reqRec);
-    addEntity("REQ-SP-05", "functional", "System", "Recommend", "Partners", "Common subjects", "Recommended study partners displayed", ["shared subjects"], "MUST", "V1", "recommended study partners based on shared subjects");
+    if (/\brecommend/i.test(rawLower)) {
+      const reqRec = "Homepage displaying recommended study partners based on shared subjects.";
+      extracted.v1Requirements.push(reqRec);
+      addEntity("REQ-SP-05", "functional", "System", "Recommend", "Partners", "Common subjects", "Recommended study partners displayed", ["shared subjects"], "MUST", "V1", "recommended study partners based on shared subjects");
+    }
 
-    extracted.ux.push("Clean, modern interface with a light social-app feel while maintaining a clear study-focused identity.");
-    extracted.techDirection.push("React is preferred for frontend.");
-    extracted.techDirection.push("Simple, lightweight backend and database that is easy to understand and run locally.");
-    extracted.scope.push("Notifications, group study rooms, and video calls are future features and are out of scope for V1.");
-    extracted.boundaries.push("Keep the architecture simple and easy to understand for beginners.");
-    extracted.boundaries.push("Stop once the V1 requirements work end-to-end. Do not proactively build future features.");
+    if (/\b(social|modern|feel)\b/i.test(rawLower)) {
+      extracted.ux.push("Clean, modern interface with a light social-app feel while maintaining a clear study-focused identity.");
+    }
+    if (/\breact\b/i.test(rawLower)) {
+      extracted.techDirection.push("React is preferred for frontend.");
+    }
+    if (/\b(backend|database|local)\b/i.test(rawLower)) {
+      extracted.techDirection.push("Simple, lightweight backend and database that is easy to understand and run locally.");
+    }
+    if (/\b(notification|rooms?|video|later|future)\b/i.test(rawLower)) {
+      extracted.scope.push("Notifications, group study rooms, and video calls are future features and are out of scope for V1.");
+    }
+    if (/\b(simple|understand)\b/i.test(rawLower)) {
+      extracted.boundaries.push("Keep the architecture simple and easy to understand for beginners.");
+      extracted.boundaries.push("Stop once the V1 requirements work end-to-end. Do not proactively build future features.");
+    }
 
-    extracted.acceptanceCriteria.push("Students can register, log in, and manage their profile details.");
-    extracted.acceptanceCriteria.push("Students can search by subject and filter by college.");
-    extracted.acceptanceCriteria.push("Partner requests can be sent, accepted, or rejected.");
-    extracted.acceptanceCriteria.push("Accepted partners can exchange chat messages.");
-    extracted.acceptanceCriteria.push("Recommended study partners are displayed based on shared subjects.");
     extracted.acceptanceCriteria.push("Core flows work end-to-end.");
+    if (/\b(login|profile)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Students can register, log in, and manage their profile details.");
+    if (/\bsearch\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Students can search by subject and filter by college.");
+    if (/\brequests?\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Partner requests can be sent, accepted, or rejected.");
+    if (/\bchat\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Accepted partners can exchange chat messages.");
+    if (/\brecommend/i.test(rawLower)) extracted.acceptanceCriteria.push("Recommended study partners are displayed based on shared subjects.");
   }
 
   // Domain E: Expense Tracker
   if (domains.isExpense) {
-    const reqAuth = "User registration/login.";
-    extracted.v1Requirements.push(reqAuth);
-    addEntity("REQ-EXP-01", "functional", "User", "Authenticate", "Account", "", "User authenticated", [], "MUST", "V1", "login");
+    if (/\b(login|auth|account)\b/i.test(rawLower)) {
+      const reqAuth = "User registration/login.";
+      extracted.v1Requirements.push(reqAuth);
+      addEntity("REQ-EXP-01", "functional", "User", "Authenticate", "Account", "", "User authenticated", [], "MUST", "V1", "login");
+    } else {
+      addProposal("PROP-EXP-01", "Consider single-user login to keep personal expenses private", "security", 0.70, "Protects financial privacy");
+    }
 
-    const reqPriv = "Each user can only access their own expenses.";
-    extracted.v1Requirements.push(reqPriv);
-    extracted.constraints.push("Private data isolation: each user's expense records must remain private from other users.");
-    addEntity("ROLE-EXP-01", "role_permission", "User", "Access", "Expenses", "Only own expenses", "Data isolated", [], "MUST", "V1", "private from other users");
+    if (/\b(own\s+expenses|private|nobody\s+else)\b/i.test(rawLower)) {
+      const reqPriv = "Each user can only access their own expenses.";
+      extracted.v1Requirements.push(reqPriv);
+      extracted.constraints.push("Private data isolation: each user's expense records must remain private from other users.");
+      addEntity("ROLE-EXP-01", "role_permission", "User", "Access", "Expenses", "Only own expenses", "Data isolated", [], "MUST", "V1", "private from other users");
+    }
 
-    let exampleCats = [];
-    if (/food/i.test(rawLower)) exampleCats.push("food");
-    if (/travel/i.test(rawLower)) exampleCats.push("travel");
-    if (/shopping/i.test(rawLower)) exampleCats.push("shopping");
-    let catStr = "";
-    if (exampleCats.length === 1) catStr = ` such as ${exampleCats[0]}`;
-    else if (exampleCats.length === 2) catStr = ` such as ${exampleCats.join(" or ")}`;
-    else if (exampleCats.length > 2) catStr = ` such as ${exampleCats.slice(0, -1).join(", ")}, or ${exampleCats[exampleCats.length - 1]}`;
+    if (/\b(add|save|track|spend|spent|expenses?)\b/i.test(rawLower)) {
+      let exampleCats = [];
+      if (/food/i.test(rawLower)) exampleCats.push("food");
+      if (/travel/i.test(rawLower)) exampleCats.push("travel");
+      if (/shopping/i.test(rawLower)) exampleCats.push("shopping");
+      let catStr = "";
+      if (exampleCats.length === 1) catStr = ` such as ${exampleCats[0]}`;
+      else if (exampleCats.length === 2) catStr = ` such as ${exampleCats.join(" or ")}`;
+      else if (exampleCats.length > 2) catStr = ` such as ${exampleCats.slice(0, -1).join(", ")}, or ${exampleCats[exampleCats.length - 1]}`;
 
-    const reqAdd = `Add and save expenses with amount and category${catStr}.`;
-    extracted.v1Requirements.push(reqAdd);
-    addEntity("DATA-EXP-01", "data", "User", "Add", "Expense", "", "Expense recorded", ["amount", "category", ...exampleCats], "MUST", "V1", "add and save expenses");
+      const reqAdd = `Add and save expenses with amount and category${catStr}.`;
+      extracted.v1Requirements.push(reqAdd);
+      addEntity("DATA-EXP-01", "data", "User", "Add", "Expense", "", "Expense recorded", ["amount", "category", ...exampleCats], "MUST", "V1", "add and save expenses");
+    }
 
-    const reqDash = "Dashboard showing total spending and category breakdown (prefer a pie chart).";
-    extracted.v1Requirements.push(reqDash);
-    addEntity("REQ-EXP-02", "functional", "User", "View Dashboard", "Spending Metrics", "", "Total spending and pie chart shown", ["total spending", "pie chart"], "MUST", "V1", "dashboard showing total spending and category breakdown pie chart");
+    if (/\b(dashboard|total\s+spending|total\s+spent|pie\s+chart|chart)\b/i.test(rawLower)) {
+      const reqDash = "Dashboard showing total spending and category breakdown (prefer a pie chart).";
+      extracted.v1Requirements.push(reqDash);
+      addEntity("REQ-EXP-02", "functional", "User", "View Dashboard", "Spending Metrics", "", "Total spending and pie chart shown", ["total spending", "pie chart"], "MUST", "V1", "dashboard showing total spending and category breakdown pie chart");
+    }
 
-    const reqMonth = "Monthly spending view with month selection.";
-    extracted.v1Requirements.push(reqMonth);
-    addEntity("REQ-EXP-03", "functional", "User", "Filter", "Expenses", "", "Monthly spending filtered", ["month"], "MUST", "V1", "monthly spending view with month selection");
+    if (/\b(month|monthly)\b/i.test(rawLower)) {
+      const reqMonth = "Monthly spending view with month selection.";
+      extracted.v1Requirements.push(reqMonth);
+      addEntity("REQ-EXP-03", "functional", "User", "Filter", "Expenses", "", "Monthly spending filtered", ["month"], "MUST", "V1", "monthly spending view with month selection");
+    }
 
-    const reqIncome = "Income entry and remaining-balance calculation.";
-    extracted.v1Requirements.push(reqIncome);
-    addEntity("RULE-EXP-01", "business_rule", "System", "Calculate", "Remaining Balance", "Income and expenses entered", "Balance = income - spending", ["income", "balance"], "MUST", "V1", "income entry and remaining-balance calculation");
+    if (/\b(income|balance|left)\b/i.test(rawLower)) {
+      const reqIncome = "Income entry and remaining-balance calculation.";
+      extracted.v1Requirements.push(reqIncome);
+      addEntity("RULE-EXP-01", "business_rule", "System", "Calculate", "Remaining Balance", "Income and expenses entered", "Balance = income - spending", ["income", "balance"], "MUST", "V1", "income entry and remaining-balance calculation");
+    } else {
+      addProposal("PROP-EXP-02", "Consider income tracking to display remaining net balance", "functional", 0.65, "Provides a clearer financial snapshot");
+    }
 
-    extracted.techDirection.push("React is preferred for the frontend.");
-    extracted.techDirection.push("Choose a simple, free/easy-to-run backend and database (e.g. Node/Express with SQLite) that is easy to set up locally.");
-    extracted.scope.push("Editing, exporting, and notifications are future features and are out of scope for V1.");
-    extracted.boundaries.push("Include simple setup/run instructions for a beginner.");
-    extracted.boundaries.push("Stop once the V1 requirements work end-to-end. Do not proactively build future features.");
+    if (/\breact\b/i.test(rawLower)) {
+      extracted.techDirection.push("React is preferred for the frontend.");
+    }
+    if (/\b(backend|database|local|setup)\b/i.test(rawLower)) {
+      extracted.techDirection.push("Choose a simple, free/easy-to-run backend and database (e.g. Node/Express with SQLite) that is easy to set up locally.");
+    }
+    if (/\b(editing|exporting|notifications?|later|future)\b/i.test(rawLower)) {
+      extracted.scope.push("Editing, exporting, and notifications are future features and are out of scope for V1.");
+    }
+    if (/\b(beginner|instructions?)\b/i.test(rawLower)) {
+      extracted.boundaries.push("Include simple setup/run instructions for a beginner.");
+    }
+    if (/\b(basic|first)\b/i.test(rawLower)) {
+      extracted.boundaries.push("Stop once the V1 requirements work end-to-end. Do not proactively build future features.");
+    }
 
-    extracted.acceptanceCriteria.push("User can register and log in.");
-    extracted.acceptanceCriteria.push("User can add expenses with amount and category.");
-    extracted.acceptanceCriteria.push("Total spending and category pie chart are displayed.");
-    extracted.acceptanceCriteria.push("Spending can be filtered by month.");
-    extracted.acceptanceCriteria.push("Income can be entered and remaining balance is accurately calculated.");
-    extracted.acceptanceCriteria.push("Data is isolated per user.");
     extracted.acceptanceCriteria.push("Core flows work end-to-end.");
+    if (/\b(login|auth)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("User can register and log in.");
+    if (/\b(add|expenses?)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("User can add expenses with amount and category.");
+    if (/\b(dashboard|total|chart)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Total spending and category pie chart are displayed.");
+    if (/\bmonth/i.test(rawLower)) extracted.acceptanceCriteria.push("Spending can be filtered by month.");
+    if (/\bincome\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Income can be entered and remaining balance is accurately calculated.");
+    if (/\b(private|own\s+expenses)\b/i.test(rawLower)) extracted.acceptanceCriteria.push("Data is isolated per user.");
   }
 
   // Generalized Semantic Extraction: ensures user's actual statements are NEVER lost
@@ -454,7 +603,9 @@ export function extractRequirements(rawPrompt) {
 
     if (isCovered) continue;
 
-    if (/\b(don't|do not|never|no\s+|cannot|must not|only(?!\s+if)|pickup only|local only|private from)\b/i.test(uLower)) {
+    if (/\b(basic version|first version|keep it simple|don't over-engineer|don't add random|random features)\b/i.test(uLower)) {
+      extracted.boundaries.push(unit);
+    } else if (/\b(don't|do not|never|no\s+|cannot|must not|only(?!\s+if)|pickup only|local only|private from)\b/i.test(uLower)) {
       extracted.constraints.push(unit);
       addEntity("CON-GEN", "constraint", "System", "Enforce", "Constraint", "", unit, [], "MUST", "V1", unit);
     } else if (/\b(optional|if practical|if easy|nice to have|if possible|only if|if simple|if not too hard|otherwise skip)\b/i.test(uLower)) {
@@ -467,8 +618,6 @@ export function extractRequirements(rawPrompt) {
       extracted.ux.push(unit);
     } else if (/\b(react|vue|node|express|sqlite|postgres|database|backend)\b/i.test(uLower)) {
       extracted.techDirection.push(unit);
-    } else if (/\b(basic version|first version|keep it simple|don't over-engineer|don't add random)\b/i.test(uLower)) {
-      extracted.boundaries.push(unit);
     } else {
       extracted.v1Requirements.push(unit);
       addEntity("REQ-GEN", "functional", "User", "Perform", "Feature", "", unit, [], "MUST", "V1", unit);

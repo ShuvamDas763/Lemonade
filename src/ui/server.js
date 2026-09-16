@@ -2,10 +2,12 @@
 //
 // Zero external dependencies (Node.js standard library only).
 // Local-first, privacy-preserving: binds to loopback (127.0.0.1) only.
+// Backed by atomic SpecRepository with full ProjectSpec hydration.
 
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 import { buildSpec } from "../spec/extractor.js";
@@ -16,38 +18,12 @@ import { detect } from "../../phase1/detector.js";
 import { rewrite } from "../../phase2/rewriter.js";
 import { SpecLedger } from "../../phase6/ledger.js";
 import { STATUS } from "../spec/model.js";
+import { SpecRepository } from "../spec/repository.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
 const DATA_DIR = path.join(__dirname, "..", "..", "data", "specs");
-
-// Ensure data directory exists
-fs.mkdirSync(DATA_DIR, { recursive: true });
-
-// In-memory active spec store (backed by disk)
-const activeSpecs = new Map();
-
-function saveSpecToDisk(spec) {
-  try {
-    const filePath = path.join(DATA_DIR, `${spec.id}.json`);
-    fs.writeFileSync(filePath, JSON.stringify(spec.toJSON(), null, 2), "utf8");
-  } catch (err) {
-    console.error("Failed to persist spec:", err.message);
-  }
-}
-
-function loadSpecFromDisk(id) {
-  try {
-    const filePath = path.join(DATA_DIR, `${id}.json`);
-    if (fs.existsSync(filePath)) {
-      const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
-      return data;
-    }
-  } catch (err) {
-    console.error("Failed to load spec:", err.message);
-  }
-  return null;
-}
+const MAX_BODY_BYTES = 1_048_576; // 1 MB payload limit
 
 // MIME types for static assets
 const MIME_TYPES = {
@@ -60,17 +36,25 @@ const MIME_TYPES = {
   ".ico": "image/x-icon",
 };
 
-export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
+export function createServer({ port = 7890, host = "127.0.0.1", repository = null } = {}) {
   const ledgerPath = path.join(__dirname, "..", "..", "data", "drift-ledger.json");
   const ledger = new SpecLedger(ledgerPath);
+  const repo = repository || new SpecRepository(DATA_DIR);
 
   const server = http.createServer(async (req, res) => {
-    // Security headers
+    const reqId = `req-${Date.now().toString(36)}-${crypto.randomBytes(3).toString("hex")}`;
+    res.setHeader("X-Request-Id", reqId);
+
+    // Security headers & strict Content-Security-Policy
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("X-Frame-Options", "DENY");
-    res.setHeader("Access-Control-Allow-Origin", `http://${host}:${port}`);
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self';");
+
+    // Local loopback CORS
+    const allowedOrigin = `http://${host}:${port}`;
+    res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Request-Id, Authorization");
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);
@@ -87,22 +71,53 @@ export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
       res.end(JSON.stringify(data));
     };
 
-    // Body parsing helper
+    // Body parsing helper with 1MB strict byte accounting
     const parseBody = () => new Promise((resolve, reject) => {
       let body = "";
-      req.on("data", (chunk) => { body += chunk; });
-      req.on("end", () => {
-        if (!body) return resolve({});
-        try { resolve(JSON.parse(body)); }
-        catch (e) { reject(new Error("Invalid JSON body")); }
+      let byteCount = 0;
+      let aborted = false;
+
+      req.on("data", (chunk) => {
+        if (aborted) return;
+        byteCount += chunk.length;
+        if (byteCount > MAX_BODY_BYTES) {
+          aborted = true;
+          const err = new Error("Payload Too Large");
+          err.statusCode = 413;
+          reject(err);
+          req.destroy();
+          return;
+        }
+        body += chunk;
       });
-      req.on("error", reject);
+
+      req.on("end", () => {
+        if (aborted) return;
+        if (!body) return resolve({});
+        try {
+          resolve(JSON.parse(body));
+        } catch (e) {
+          const parseErr = new Error("Invalid JSON body");
+          parseErr.statusCode = 400;
+          reject(parseErr);
+        }
+      });
+
+      req.on("error", (err) => {
+        if (!aborted) reject(err);
+      });
     });
 
     try {
       // API Routes
       if (pathname === "/api/health" && req.method === "GET") {
-        sendJson(200, { ok: true, status: "healthy", service: "lemonade-integrity-platform", version: "2.0.0" });
+        sendJson(200, {
+          ok: true,
+          status: "healthy",
+          service: "lemonade-integrity-platform",
+          version: "2.1.0",
+          requestId: reqId,
+        });
         return;
       }
 
@@ -114,6 +129,14 @@ export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
         return;
       }
 
+      // List all saved specifications
+      if (pathname === "/api/specs" && req.method === "GET") {
+        const list = repo.list();
+        sendJson(200, { ok: true, specs: list });
+        return;
+      }
+
+      // Create new specification
       if (pathname === "/api/spec/create" && req.method === "POST") {
         const body = await parseBody();
         const prompt = body.prompt || "";
@@ -121,16 +144,15 @@ export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
         const mode = body.mode || "agent";
 
         if (!prompt.trim()) {
-          sendJson(400, { error: "Prompt cannot be empty" });
+          sendJson(400, { ok: false, error: "Prompt cannot be empty" });
           return;
         }
 
-        // Build canonical ProjectSpec
+        // Build canonical ProjectSpec and atomically persist via SpecRepository
         const spec = buildSpec(prompt, title);
-        activeSpecs.set(spec.id, spec);
-        saveSpecToDisk(spec);
+        repo.create(spec);
 
-        // Run rewriter to get optimized prompt & diff
+        // Run rewriter for optimization & diff
         const rewriteResult = await rewrite(prompt, { mode: "optimize" });
 
         // Run four-dimension validation
@@ -160,19 +182,27 @@ export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
         return;
       }
 
-      if (pathname.startsWith("/api/spec/") && req.method === "GET") {
+      // Get single specification (hydrates from disk on restart)
+      if (pathname.startsWith("/api/spec/") && req.method === "GET" && !pathname.includes("/export")) {
         const id = pathname.replace("/api/spec/", "").split("/")[0];
-        let spec = activeSpecs.get(id);
+        const spec = repo.get(id);
         if (!spec) {
-          const fromDisk = loadSpecFromDisk(id);
-          if (fromDisk) {
-            sendJson(200, { ok: true, spec: fromDisk });
-            return;
-          }
-          sendJson(404, { error: `Spec ${id} not found` });
+          sendJson(404, { ok: false, error: `Spec ${id} not found` });
           return;
         }
         sendJson(200, { ok: true, spec: spec.toJSON() });
+        return;
+      }
+
+      // Delete specification
+      if (pathname.startsWith("/api/spec/") && req.method === "DELETE") {
+        const id = pathname.replace("/api/spec/", "").split("/")[0];
+        const deleted = repo.delete(id);
+        if (!deleted) {
+          sendJson(404, { ok: false, error: `Spec ${id} not found or could not be deleted` });
+          return;
+        }
+        sendJson(200, { ok: true, id });
         return;
       }
 
@@ -181,16 +211,16 @@ export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
       if (itemMatch && req.method === "PUT") {
         const [, specId, itemId] = itemMatch;
         const body = await parseBody();
-        const spec = activeSpecs.get(specId);
+        const spec = repo.get(specId);
 
         if (!spec) {
-          sendJson(404, { error: `Spec ${specId} not found` });
+          sendJson(404, { ok: false, error: `Spec ${specId} not found` });
           return;
         }
 
         const item = spec.findItem(itemId);
         if (!item) {
-          sendJson(404, { error: `Item ${itemId} not found in spec` });
+          sendJson(404, { ok: false, error: `Item ${itemId} not found in spec` });
           return;
         }
 
@@ -213,26 +243,26 @@ export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
           });
         }
 
-        saveSpecToDisk(spec);
+        repo.save(spec);
         sendJson(200, { ok: true, item: item.toJSON(), spec: spec.toJSON() });
         return;
       }
 
-      // Answer open question
+      // Answer open question (promotes answer to accepted decision item)
       const questionMatch = pathname.match(/^\/api\/spec\/([^/]+)\/question\/([^/]+)\/answer$/);
       if (questionMatch && req.method === "POST") {
         const [, specId, questionId] = questionMatch;
         const body = await parseBody();
-        const spec = activeSpecs.get(specId);
+        const spec = repo.get(specId);
 
         if (!spec) {
-          sendJson(404, { error: `Spec ${specId} not found` });
+          sendJson(404, { ok: false, error: `Spec ${specId} not found` });
           return;
         }
 
         const answer = body.answer || "";
         spec.answerQuestion(questionId, answer);
-        saveSpecToDisk(spec);
+        repo.save(spec);
 
         sendJson(200, { ok: true, spec: spec.toJSON() });
         return;
@@ -244,10 +274,10 @@ export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
         const [, specId] = exportMatch;
         const body = await parseBody();
         const mode = body.mode || "agent";
-        const spec = activeSpecs.get(specId);
+        const spec = repo.get(specId);
 
         if (!spec) {
-          sendJson(404, { error: `Spec ${specId} not found` });
+          sendJson(404, { ok: false, error: `Spec ${specId} not found` });
           return;
         }
 
@@ -305,14 +335,20 @@ export function createServer({ port = 7890, host = "127.0.0.1" } = {}) {
       res.writeHead(404, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Not Found", pathname }));
     } catch (err) {
-      console.error("Server Error:", err);
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Internal Server Error", detail: err.message }));
+      const statusCode = err.statusCode || 500;
+      res.writeHead(statusCode, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        ok: false,
+        error: err.message || "Internal Server Error",
+        statusCode,
+        requestId: reqId,
+      }));
     }
   });
 
   return {
     server,
+    repository: repo,
     listen: () => new Promise((resolve) => {
       server.listen(port, host, () => {
         console.log(`Lemonade Control Room listening on http://${host}:${port}`);

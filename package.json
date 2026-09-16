@@ -16,12 +16,16 @@
     "middleware"
   ],
   "scripts": {
-    "test": "node phase1/verify-detector.js && node phase2/verify-rewriter.js && node phase3/verify-pipeline.js && node phase4/verify-memory.js && node phase5/verify-feedback.js && node phase6/verify-linter.js && node phase6/verify-drift.js && node phase6/verify-ab-wiring.js && node demo/verify-watch.js && node phase1/test-endpoint.js && node test/verify-market-ready.js && node test/verify-cross-contamination.js && node test/verify-boundaries.js && node test/verify-spec-model.js && node test/verify-validation.js && node test/verify-adversarial.js && node test/verify-ui.js && node test/corpus/run-corpus.js",
+    "test": "node phase1/verify-detector.js && node phase2/verify-rewriter.js && node phase3/verify-pipeline.js && node phase4/verify-memory.js && node phase5/verify-feedback.js && node phase6/verify-linter.js && node phase6/verify-drift.js && node phase6/verify-ab-wiring.js && node demo/verify-watch.js && node phase1/test-endpoint.js && node test/verify-market-ready.js && node test/verify-cross-contamination.js && node test/verify-boundaries.js && node test/verify-spec-model.js && node test/verify-validation.js && node test/verify-adversarial.js && node test/verify-ui.js && node test/test-optimizer-rules.js && node test/verify-persistence.js && node test/verify-security.js && node test/verify-core-api.js && node test/corpus/run-corpus.js",
     "ui": "node src/ui/server.js",
     "verify:spec": "node test/verify-spec-model.js",
     "verify:validation": "node test/verify-validation.js",
     "verify:adversarial": "node test/verify-adversarial.js",
     "verify:ui": "node test/verify-ui.js",
+    "verify:optimizer": "node test/test-optimizer-rules.js",
+    "verify:persistence": "node test/verify-persistence.js",
+    "verify:security": "node test/verify-security.js",
+    "verify:core": "node test/verify-core-api.js",
     "verify:corpus": "node test/corpus/run-corpus.js",
     "verify:contamination": "node test/verify-cross-contamination.js",
     "proxy": "node phase1/server.js",

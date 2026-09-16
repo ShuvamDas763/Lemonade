@@ -26,6 +26,22 @@ const DEFAULT_UPSTREAM = process.env.UPSTREAM_BASE_URL ?? (process.env.OPENAI_BA
 const SESSION_FIREWALL = new SessionFirewall();
 
 /**
+ * Check if the target upstream URL resolves to this proxy itself.
+ */
+export function isSelfLoop(targetUrl, localPort = 7847) {
+  if (!targetUrl) return false;
+  try {
+    const u = new URL(targetUrl);
+    const host = u.hostname.toLowerCase();
+    const port = parseInt(u.port || (u.protocol === "https:" ? "443" : "80"), 10);
+    const isLoopHost = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host === "::1";
+    return isLoopHost && port === Number(process.env.PORT ?? localPort);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Forward an HTTP request to an upstream provider.
  */
 function forwardUpstream(targetUrl, headers, body, onChunk, onEnd, onError) {
@@ -33,8 +49,14 @@ function forwardUpstream(targetUrl, headers, body, onChunk, onEnd, onError) {
   const isHttps = u.protocol === "https:";
   const client = isHttps ? https : http;
 
-  const fwdHeaders = { ...headers, host: u.host };
-  delete fwdHeaders["content-length"];
+  // Filter allowed headers; strip cookies and arbitrary headers
+  const ALLOWED_HEADERS = new Set(["authorization", "content-type", "accept", "user-agent", "x-request-id"]);
+  const fwdHeaders = { host: u.host };
+  for (const [k, v] of Object.entries(headers)) {
+    if (ALLOWED_HEADERS.has(k.toLowerCase())) {
+      fwdHeaders[k.toLowerCase()] = v;
+    }
+  }
 
   const req = client.request(u, {
     method: "POST",
@@ -46,6 +68,11 @@ function forwardUpstream(targetUrl, headers, body, onChunk, onEnd, onError) {
     onChunk(null, { statusCode: res.statusCode, headers: res.headers });
     res.on("data", (chunk) => onChunk(chunk));
     res.on("end", () => onEnd());
+  });
+
+  // 30s upstream timeout
+  req.setTimeout(30000, () => {
+    req.destroy(new Error("Upstream timeout: provider took longer than 30 seconds to respond"));
   });
 
   req.on("error", onError);
@@ -168,6 +195,12 @@ export async function handleChatCompletions(req, res, bodyStr) {
   const upstreamUrl = DEFAULT_UPSTREAM
     ? (DEFAULT_UPSTREAM.endsWith("/chat/completions") ? DEFAULT_UPSTREAM : `${DEFAULT_UPSTREAM.replace(/\/+$/, "")}/chat/completions`)
     : null;
+
+  if (upstreamUrl && isSelfLoop(upstreamUrl)) {
+    res.writeHead(400, { "content-type": "application/json" });
+    res.end(JSON.stringify({ error: "Proxy self-loop prevented: upstream URL cannot point to Lemonade itself" }));
+    return;
+  }
 
   if (upstreamUrl && (authHeader || process.env.OPENAI_API_KEY)) {
     // Forward to upstream
