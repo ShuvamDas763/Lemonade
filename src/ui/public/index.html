@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lemonade — Specification Integrity Studio</title>
+  <meta name="description" content="Local-first specification integrity layer for AI-assisted software development. Prevents silent requirement invention, loss, and drift.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Command & Status Bar -->
+    <header class="top-nav">
+      <div class="nav-left">
+        <div class="logo">
+          <div class="logo-mark">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Z" fill="url(#lemon-fill)" fill-opacity="0.2"/>
+              <path d="M19 5C16.5 2.5 11.5 2.2 7.8 4.4 4.1 6.6 2.4 10.7 3.6 14.8 4.8 18.9 8.6 21.8 12.9 21.8c4.3 0 7.9-2.8 8.9-7 .6-2.4.1-5-1.2-7Z" stroke="url(#lemon-grad)" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="12" cy="12" r="3" fill="#f59e0b"/>
+              <defs>
+                <linearGradient id="lemon-fill" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#fef08a"/>
+                  <stop offset="1" stop-color="#f59e0b"/>
+                </linearGradient>
+                <linearGradient id="lemon-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#fef08a"/>
+                  <stop offset="0.5" stop-color="#fbbf24"/>
+                  <stop offset="1" stop-color="#d97706"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <div class="logo-text-group">
+            <span class="logo-title">LEMONADE</span>
+            <span class="logo-badge">INTEGRITY STUDIO</span>
+          </div>
+        </div>
+
+        <div class="privacy-pill">
+          <span class="pulse-dot"></span>
+          <span class="privacy-text">LOCAL-FIRST • 127.0.0.1</span>
+        </div>
+      </div>
+
+      <div class="nav-right">
+        <div class="mode-select-wrap">
+          <span class="mode-label">Output Mode</span>
+          <div class="select-container">
+            <select id="output-mode-select" class="control-select">
+              <option value="agent" selected>Agent-Ready</option>
+              <option value="builder">Full Builder</option>
+              <option value="minimal">Minimal Compact</option>
+              <option value="audit">Audit Report</option>
+              <option value="json">Structured JSON</option>
+              <option value="interactive">Interactive</option>
+            </select>
+            <svg class="select-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <div class="nav-actions">
+          <button id="btn-copy-agent" class="btn btn-primary-hero" title="Copy Agent-Ready Prompt (Alt+C)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            <span>Agent Prompt</span>
+          </button>
+          <button id="btn-copy-md" class="btn btn-outline" title="Copy Markdown Spec (Alt+M)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 15V9l4 4 4-4v6"/></svg>
+            <span>Markdown</span>
+          </button>
+          <button id="btn-export-json" class="btn btn-outline" title="Export JSON Spec">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Export JSON</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Studio Layout -->
+    <main class="dashboard-grid">
+      <!-- Left Panel: Prompt Composer & Ambiguity Radar -->
+      <section class="panel panel-left" id="panel-prompt">
+        <div class="panel-header-clean">
+          <div class="header-tag">INPUT PROMPT</div>
+          <div class="sample-pills">
+            <button class="pill-btn" data-sample="saas">SaaS</button>
+            <button class="pill-btn" data-sample="ecommerce">Store</button>
+            <button class="pill-btn" data-sample="study">Study</button>
+            <button class="pill-btn" data-sample="expense">Expense</button>
+          </div>
+        </div>
+
+        <div class="prompt-box-wrap">
+          <textarea id="prompt-input" spellcheck="false" placeholder="Describe the software you want to build... (e.g. user roles, constraints, database preferences, v1 vs v2 scope)"></textarea>
+        </div>
+
+        <div class="prompt-actions">
+          <button id="btn-analyze" class="btn btn-analyze">
+            <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Extract & Verify Spec</span>
+            <kbd class="btn-kbd">Ctrl+Enter</kbd>
+          </button>
+          <button id="btn-clear" class="btn btn-ghost" title="Clear input">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Ambiguity Radar Stream -->
+        <div class="ambiguity-section" id="ambiguity-container">
+          <div class="section-title-row">
+            <div class="section-title-left">
+              <span class="title-label">AMBIGUITY RADAR</span>
+              <span class="count-bubble" id="flag-count">0</span>
+            </div>
+            <span id="ambiguity-score-badge" class="badge badge-score">Score: 0</span>
+          </div>
+
+          <div id="flags-list" class="flags-list">
+            <div class="empty-state">
+              <div class="empty-sparkle">✨</div>
+              <p>Type or pick a preset above to detect ambiguities in real time.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Center Panel: Living Specification Canvas (Hero) -->
+      <section class="panel panel-middle" id="panel-spec">
+        <div class="spec-hero-header">
+          <div class="spec-hero-title-area">
+            <div class="spec-kicker">LIVING SPECIFICATION MODEL</div>
+            <h1 id="spec-title">Project Specification</h1>
+          </div>
+
+          <div class="spec-stats-bar">
+            <div class="stat-pill stat-user">
+              <span class="stat-dot dot-emerald"></span>
+              <span id="count-user">0 User-Stated</span>
+            </div>
+            <div class="stat-pill stat-inferred">
+              <span class="stat-dot dot-amber"></span>
+              <span id="count-inferred">0 Inferred</span>
+            </div>
+            <div class="stat-pill stat-recommended">
+              <span class="stat-dot dot-sky"></span>
+              <span id="count-recommended">0 Recommended</span>
+            </div>
+            <div class="stat-pill stat-questions">
+              <span class="stat-dot dot-rose"></span>
+              <span id="count-questions">0 Open Questions</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter Segmented Control (Zero Scrollbar) -->
+        <div class="spec-nav-bar">
+          <div class="filter-segmented">
+            <button class="filter-tab active" data-filter="all">All Items</button>
+            <button class="filter-tab" data-filter="user-stated">Binding (User)</button>
+            <button class="filter-tab" data-filter="inferred">Inferred</button>
+            <button class="filter-tab" data-filter="constraint">Constraints</button>
+            <button class="filter-tab" data-filter="workflow">Workflows</button>
+            <button class="filter-tab" data-filter="data-entity">Data Entities</button>
+          </div>
+          <div class="spec-actions-quick">
+            <span class="spec-nav-tip">Use <kbd>j</kbd>/<kbd>k</kbd> to navigate • <kbd>a</kbd>/<kbd>r</kbd> to decide</span>
+          </div>
+        </div>
+
+        <!-- Requirements Canvas -->
+        <div id="items-stream" class="items-stream">
+          <div class="empty-canvas">
+            <div class="empty-icon-geom">📐</div>
+            <h3>No Specification Active</h3>
+            <p>Enter your software requirements on the left to synthesize the verified specification model.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: 4D Integrity & Clarification Inspector -->
+      <section class="panel panel-right" id="panel-audit">
+        <div class="inspector-header">
+          <div class="header-tag">INTEGRITY VERIFICATION</div>
+          <span id="overall-valid-badge" class="badge badge-pending">PENDING</span>
+        </div>
+
+        <!-- 4-Dimension Quality Gate (Modern Clean Cards) -->
+        <div class="validation-grid">
+          <div class="dim-card" id="dim-preservation">
+            <div class="dim-head">
+              <span class="dim-name">Preservation</span>
+              <span class="dim-status badge badge-neutral" id="status-preservation">—</span>
+            </div>
+            <div class="dim-sub">Verbatim user authority</div>
+            <div class="dim-detail" id="detail-preservation"></div>
+          </div>
+
+          <div class="dim-card" id="dim-interpretation">
+            <div class="dim-head">
+              <span class="dim-name">Interpretation</span>
+              <span class="dim-status badge badge-neutral" id="status-interpretation">—</span>
+            </div>
+            <div class="dim-sub">Actors, workflows, boundaries</div>
+            <div class="dim-detail" id="detail-interpretation"></div>
+          </div>
+
+          <div class="dim-card" id="dim-safety">
+            <div class="dim-head">
+              <span class="dim-name">Safety & Risk</span>
+              <span class="dim-status badge badge-neutral" id="status-safety">—</span>
+            </div>
+            <div class="dim-sub">Auth, payments, data exposure</div>
+            <div class="dim-detail" id="detail-safety"></div>
+          </div>
+
+          <div class="dim-card" id="dim-completeness">
+            <div class="dim-head">
+              <span class="dim-name">Completeness</span>
+              <span class="dim-status badge badge-neutral" id="status-completeness">—</span>
+            </div>
+            <div class="dim-sub">Zero unacknowledged gaps</div>
+            <div class="dim-detail" id="detail-completeness"></div>
+          </div>
+        </div>
+
+        <!-- Quota Intelligence & 5-Axis Scorecard (Rules 1.1-1.3 & 2.1-2.5) -->
+        <div class="quota-section" id="quota-container">
+          <div class="section-title-row">
+            <div class="section-title-left">
+              <span class="title-label">QUOTA & QUALITY SCORECARD</span>
+              <span class="badge badge-score" id="quota-value-delta">+0 Δ</span>
+            </div>
+            <span class="subhead-tip" id="quota-tier-tag">Free-Tier Sizing</span>
+          </div>
+
+          <div class="quota-kpi-row">
+            <div class="kpi-card" title="Estimated prompt token cost (Rule 2.1)">
+              <span class="kpi-num" id="quota-token-count">0</span>
+              <span class="kpi-label">Prompt Tokens</span>
+            </div>
+            <div class="kpi-card" title="Predicted turns to working completion (Rule 2.2)">
+              <span class="kpi-num" id="quota-turns-count">1.0</span>
+              <span class="kpi-label">Target Turns</span>
+            </div>
+            <div class="kpi-card" title="Runaway loop & scope protection (Rule 2.3 & 3.4)">
+              <span class="kpi-badge badge-pass" id="quota-loop-risk">SAFE</span>
+              <span class="kpi-label">Loop Risk</span>
+            </div>
+          </div>
+
+          <!-- 5-Axis Radar Bars -->
+          <div class="five-axis-grid">
+            <div class="axis-row">
+              <span class="axis-name">Clarity</span>
+              <div class="axis-track"><div class="axis-fill fill-emerald" id="axis-clarity" style="width: 0%"></div></div>
+              <span class="axis-val" id="val-clarity">0</span>
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Completeness</span>
+              <div class="axis-track"><div class="axis-fill fill-emerald" id="axis-completeness" style="width: 0%"></div></div>
+              <span class="axis-val" id="val-completeness">0</span>
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Efficiency</span>
+              <div class="axis-track"><div class="axis-fill fill-amber" id="axis-efficiency" style="width: 0%"></div></div>
+              <span class="axis-val" id="val-efficiency">0</span>
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Scope Control</span>
+              <div class="axis-track"><div class="axis-fill fill-emerald" id="axis-scope" style="width: 0%"></div></div>
+              <span class="axis-val" id="val-scope">0</span>
+            </div>
+            <div class="axis-row">
+              <span class="axis-name">Verifiability</span>
+              <div class="axis-track"><div class="axis-fill fill-sky" id="axis-verifiability" style="width: 0%"></div></div>
+              <span class="axis-val" id="val-verifiability">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clarification Queue -->
+        <div class="queue-section">
+          <div class="section-title-row">
+            <div class="section-title-left">
+              <span class="title-label">CLARIFICATION QUEUE</span>
+              <span class="count-bubble count-bubble-warn" id="queue-count">0</span>
+            </div>
+            <span class="subhead-tip">Ranked by Irreversibility</span>
+          </div>
+          <div id="questions-list" class="questions-list">
+            <div class="empty-state-mini">
+              <span>✓ All critical decisions resolved.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Implementation Drift Ledger -->
+        <div class="ledger-section">
+          <div class="section-title-row">
+            <div class="section-title-left">
+              <span class="title-label">IMPLEMENTATION DRIFT</span>
+            </div>
+            <span id="coverage-percent" class="badge badge-info">Coverage: 0%</span>
+          </div>
+
+          <div class="coverage-track">
+            <div class="coverage-bar-fill" id="coverage-fill" style="width: 0%"></div>
+          </div>
+
+          <div id="ledger-stats" class="ledger-stats">
+            <div class="stat-chip"><span class="stat-dot dot-emerald"></span><span id="stat-implemented">0 implemented</span></div>
+            <div class="stat-chip"><span class="stat-dot dot-amber"></span><span id="stat-unverified">0 unverified</span></div>
+            <div class="stat-chip"><span class="stat-dot dot-rose"></span><span id="stat-contradicted">0 contradicted</span></div>
+          </div>
+
+          <div id="ledger-entries" class="ledger-entries"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- Status & Keyboard Footer -->
+    <footer class="app-footer">
+      <div class="shortcuts-row">
+        <span class="shortcut"><kbd>j</kbd><kbd>k</kbd> Select</span>
+        <span class="shortcut-sep">•</span>
+        <span class="shortcut"><kbd>a</kbd> Accept</span>
+        <span class="shortcut"><kbd>r</kbd> Reject</span>
+        <span class="shortcut"><kbd>e</kbd> Edit</span>
+        <span class="shortcut"><kbd>d</kbd> Defer</span>
+        <span class="shortcut-sep">•</span>
+        <span class="shortcut"><kbd>/</kbd> Focus Prompt</span>
+        <span class="shortcut"><kbd>Ctrl+Enter</kbd> Run</span>
+      </div>
+      <div class="footer-right">
+        <span class="engine-tag">Lemonade Integrity Engine</span>
+        <span class="footer-sep">•</span>
+        <span>Deterministic Verification Core</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

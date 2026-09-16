@@ -1,0 +1,114 @@
+[
+  {
+    "id": "saas_feedback",
+    "domain": "SaaS / B2B",
+    "title": "Customer Feedback Portal",
+    "raw": "Build a multi-tenant B2B customer feedback portal. Tenants can create surveys with custom rating scales. Customers submit responses via public link without login. Managers login with SSO to view analytics. Tenant data must be strictly isolated. Exporting to CSV is planned for v2. React frontend, Node/SQLite backend.",
+    "expected": {
+      "actors": ["tenant", "customer", "manager"],
+      "mustHaveAuth": true,
+      "mustHaveConstraints": true,
+      "futureFeatures": ["csv", "v2"],
+      "expectedFlags": ["missing_data_model"]
+    }
+  },
+  {
+    "id": "ecommerce_digital",
+    "domain": "E-Commerce",
+    "title": "Indie Audio Store",
+    "raw": "Build a lightweight digital audio store for musicians. Musicians register and upload tracks with cover art and prices. Fans browse tracks, listen to 30s previews, and purchase. No physical shipping. Audio downloads must be generated via secure expiring URLs. Keep v1 runnable locally.",
+    "expected": {
+      "actors": ["musician", "fan"],
+      "mustHaveConstraints": true,
+      "prohibitions": ["shipping"],
+      "expectedFlags": ["unspecified_auth", "missing_stack"]
+    }
+  },
+  {
+    "id": "healthcare_clinic",
+    "domain": "Healthcare",
+    "title": "Patient Appointment Portal",
+    "raw": "Build a clinic appointment scheduling web app. Patients can view open slots and book appointments with doctors. Doctors can approve or reschedule appointments. All patient medical notes must be strictly confidential and encrypted at rest. No insurance billing integration for v1.",
+    "expected": {
+      "actors": ["patient", "doctor"],
+      "mustHaveConstraints": true,
+      "securityFocus": true,
+      "futureFeatures": ["insurance", "billing"]
+    }
+  },
+  {
+    "id": "devtools_linter",
+    "domain": "Developer Tools",
+    "title": "Git Commit Message Linter",
+    "raw": "Build a CLI git commit message linter tool. It checks commit messages against conventional commits format (feat, fix, docs, refactor). If the commit message fails, exit with non-zero code and display error message. No external network requests allowed during linting.",
+    "expected": {
+      "platform": "cli",
+      "mustHaveConstraints": true,
+      "prohibitions": ["network"]
+    }
+  },
+  {
+    "id": "gaming_leaderboard",
+    "domain": "Gaming",
+    "title": "Arcade Score Leaderboard",
+    "raw": "Build a real-time arcade score leaderboard service. Players submit their game nickname, score, and level. The dashboard displays the global top 100 high scores updated via WebSocket. Reject scores that exceed 1,000,000 as anti-cheat measure.",
+    "expected": {
+      "actors": ["player"],
+      "mustHaveConstraints": true,
+      "realtime": true
+    }
+  },
+  {
+    "id": "iot_telemetry",
+    "domain": "IoT / Hardware",
+    "title": "Smart Greenhouse Monitor",
+    "raw": "Build a smart greenhouse temperature and humidity monitor. Sensors send telemetry pings every minute. If temperature exceeds 35C, trigger an alert banner on the dashboard. Do not send SMS alerts for v1, in-app notifications only.",
+    "expected": {
+      "workflows": true,
+      "mustHaveConstraints": true,
+      "prohibitions": ["sms"]
+    }
+  },
+  {
+    "id": "fintech_budget",
+    "domain": "Fintech",
+    "title": "Personal Budget & Tax Tracker",
+    "raw": "Build a personal expense and tax estimation tool. Users enter monthly gross income and categorize expenses. Calculate estimated federal income tax deduction and net disposable income. Data must be stored locally in SQLite, no third-party bank syncing.",
+    "expected": {
+      "calculations": true,
+      "prohibitions": ["bank sync"],
+      "mustHaveConstraints": true
+    }
+  },
+  {
+    "id": "edtech_tutoring",
+    "domain": "EdTech",
+    "title": "Peer Tutoring Matcher",
+    "raw": "Build a peer tutoring connection app for university courses. Students list subjects they need help with or can tutor in. Algorithm matches tutors with tutees based on course code. Once matched, students can exchange messages.",
+    "expected": {
+      "actors": ["student", "tutor"],
+      "workflows": true
+    }
+  },
+  {
+    "id": "internal_ops",
+    "domain": "Internal Tools",
+    "title": "Office Asset Checkout",
+    "raw": "Build an internal office hardware checkout system. Employees can request laptops, monitors, and adapters from stock. Office manager approves requests and marks items as checked-out with due dates. Overdue notifications can wait for v2.",
+    "expected": {
+      "actors": ["employee", "manager"],
+      "futureFeatures": ["v2", "notification"]
+    }
+  },
+  {
+    "id": "data_pipeline",
+    "domain": "Data Systems",
+    "title": "Webhook Event Relay",
+    "raw": "Build an HTTP webhook event ingest and relay service. External systems POST event payloads. Service validates payload signature and stores payload in append-only SQLite log. If invalid signature, return 401 Unauthorized immediately.",
+    "expected": {
+      "securityFocus": true,
+      "workflows": true,
+      "mustHaveConstraints": true
+    }
+  }
+]

@@ -17,6 +17,9 @@ import { CorrectionStore } from "../phase4/corrections.js";
 import { detectWorkspace } from "./workspace.js";
 import { classifyIntent } from "../phase1/intent-gate.js";
 import { optimizePrompt, extractRequirements, buildOptimizedMarkdown } from "./optimizer.js";
+import { buildSpec } from "../src/spec/extractor.js";
+import { exportToMarkdown, exportToJSON, exportAgentPrompt, exportAuditReport } from "../src/spec/exporter.js";
+import { validateAll } from "../src/validation/validate.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -257,13 +260,21 @@ export async function rewrite(rawPrompt, {
     });
 
     const filteredQuestions = questions.filter((q) => {
-      // Section 7 & 8: Remove generic boilerplate questions (Stripe, SMTP, Mailgun)
+      // Remove generic boilerplate questions (Stripe, SMTP, Mailgun)
       if (q.category === "vague_integration") return false;
-      if (/Stripe|SMTP|Mailgun|<matched words>/i.test(q.text)) return false;
+      if (/\b(Stripe|SMTP|Mailgun)\b/i.test(q.text)) return false;
       if (q.category === "compound_request" && ((ext.futureScope?.length ?? 0) > 0 || (ext.scope?.length ?? 0) > 0)) {
         return false;
       }
-      return false; // In optimize mode, proceed on conservative assumptions rather than blocking open questions
+      // If a safe-default assumption covers this ambiguity, do not ask a blocking question in optimize mode
+      if (filteredAssumptions.some((a) => a.category === q.category || a.category === q.id)) {
+        return false;
+      }
+      // If question has safe default or low severity, suppress in optimize mode
+      if (q.hasSafeDefault || q.severity < 2) {
+        return false;
+      }
+      return q.severity >= 3 || q.impact === "critical" || q.impact === "high";
     });
 
     const finalAssumptions = filteredAssumptions;
@@ -278,13 +289,47 @@ export async function rewrite(rawPrompt, {
     extracted = opt.extracted;
     quality = opt.quality;
     const added = [...finalAssumptions.map((a) => a.text), ...finalQuestions.map((q) => q.text)];
+    const spec = buildSpec(raw);
+    const validation = validateAll(raw, optimized_prompt, spec);
     return {
       ok: true,
       mode,
       optimized_prompt,
       extracted,
       quality,
+      spec,
+      validation,
       assumptions_made: finalAssumptions,
+      clarifying_questions: finalQuestions,
+      warnings,
+      changes: { added, removed: [], modified: [] },
+      memory,
+    };
+  } else if (["minimal", "builder", "agent", "audit", "json", "interactive"].includes(mode)) {
+    const spec = buildSpec(raw);
+    if (mode === "json") {
+      optimized_prompt = exportToJSON(spec);
+    } else if (mode === "agent") {
+      optimized_prompt = exportAgentPrompt(spec);
+    } else if (mode === "audit") {
+      optimized_prompt = exportAuditReport(spec);
+    } else {
+      optimized_prompt = exportToMarkdown(spec, { mode });
+    }
+
+    const finalQuestions = mode === "interactive"
+      ? spec.openQuestions().map((q) => ({ category: "open_question", severity: q.implementationImpact === "critical" ? 3 : 2, text: q.text, impact: q.implementationImpact }))
+      : questions;
+
+    const validation = validateAll(raw, optimized_prompt, spec);
+    const added = [...assumptions.map((a) => a.text), ...finalQuestions.map((q) => q.text)];
+    return {
+      ok: true,
+      mode,
+      optimized_prompt,
+      spec,
+      validation,
+      assumptions_made: assumptions,
       clarifying_questions: finalQuestions,
       warnings,
       changes: { added, removed: [], modified: [] },
@@ -293,10 +338,14 @@ export async function rewrite(rawPrompt, {
   } else {
     optimized_prompt = buildSections(raw, assumptions, questions);
     const added = [...assumptions.map((a) => a.text), ...questions.map((q) => q.text)];
+    const spec = buildSpec(raw);
+    const validation = validateAll(raw, optimized_prompt, spec);
     return {
       ok: true,
       mode,
       optimized_prompt,
+      spec,
+      validation,
       assumptions_made: assumptions,
       clarifying_questions: questions,
       warnings,

@@ -245,6 +245,8 @@ export class SpecLedger {
           id: `${r.kind}-${r.key}-${idx}`,
           kind: r.kind, key: r.key, phrase: r.phrase, number: r.number ?? null, qualifier: r.qualifier ?? null, qNum: r.qNum ?? null,
           firstSeen: idx, lastSeen: idx, count: 1, supersededBy: null, supersededAt: null,
+          implementationStatus: "unverified",
+          evidence: [],
         };
         this.data.entries.push(entry);
         additions.push({ id: entry.id, kind: r.kind, key: r.key, phrase: r.phrase, number: r.number ?? null });
@@ -264,6 +266,76 @@ export class SpecLedger {
     });
     this.save();
     return { messageIndex: idx, intentional, trusted, agentFlagged: !trusted && judgeHits.length > 0, additions, violations, reversals, judgeHits };
+  }
+
+  /** Link implementation evidence (file path, test name, commit, or PR) to an entry. */
+  linkEvidence(entryId, { type = "file", ref = "", note = "" } = {}) {
+    const e = this.data.entries.find((x) => x.id === entryId || x.key === entryId);
+    if (!e) return false;
+    if (!Array.isArray(e.evidence)) e.evidence = [];
+    e.evidence.push({ type, ref, note, at: nowIso() });
+    this.save();
+    return true;
+  }
+
+  /** Update implementation status of a requirement. */
+  updateImplementationStatus(entryId, status, { reason = "", evidence = null } = {}) {
+    const validStatuses = ["implemented", "partially-implemented", "not-implemented", "contradicted", "unverified"];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status "${status}". Must be one of: ${validStatuses.join(", ")}`);
+    }
+    const e = this.data.entries.find((x) => x.id === entryId || x.key === entryId);
+    if (!e) return false;
+    e.implementationStatus = status;
+    if (reason) e.statusReason = reason;
+    if (evidence) {
+      if (!Array.isArray(e.evidence)) e.evidence = [];
+      e.evidence.push({ ...evidence, at: nowIso() });
+    }
+    this.save();
+    return true;
+  }
+
+  /** Generate an audit report of implementation coverage and drift. */
+  implementationDriftReport() {
+    const active = this.activeEntries();
+    const stats = {
+      total: active.length,
+      implemented: 0,
+      partiallyImplemented: 0,
+      notImplemented: 0,
+      contradicted: 0,
+      unverified: 0,
+      withEvidence: 0,
+    };
+
+    const details = [];
+    for (const e of active) {
+      const st = e.implementationStatus || "unverified";
+      if (st === "implemented") stats.implemented++;
+      else if (st === "partially-implemented") stats.partiallyImplemented++;
+      else if (st === "not-implemented") stats.notImplemented++;
+      else if (st === "contradicted") stats.contradicted++;
+      else stats.unverified++;
+
+      if (Array.isArray(e.evidence) && e.evidence.length > 0) stats.withEvidence++;
+      details.push({
+        id: e.id,
+        key: e.key,
+        kind: e.kind,
+        phrase: e.phrase,
+        status: st,
+        evidenceCount: (e.evidence || []).length,
+      });
+    }
+
+    const coverage = stats.total === 0 ? 1 : Math.round(((stats.implemented + 0.5 * stats.partiallyImplemented) / stats.total) * 100);
+    return {
+      stats,
+      coveragePercent: coverage,
+      isFullyVerified: stats.unverified === 0 && stats.notImplemented === 0 && stats.contradicted === 0,
+      details,
+    };
   }
 
   /** Explicitly resolve a flagged contradiction: the newer state wins and the

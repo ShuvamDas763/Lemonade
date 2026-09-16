@@ -35,5 +35,6 @@ try {
   process.exitCode = 1;
 } finally {
   srv.kill();
+  await wait(150);
   process.exit(process.exitCode ?? 0);
 }

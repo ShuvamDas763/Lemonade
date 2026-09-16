@@ -428,33 +428,50 @@ export function extractRequirements(rawPrompt) {
     extracted.acceptanceCriteria.push("Core flows work end-to-end.");
   }
 
-  // Generalized Semantic Extraction for Novel / Unmodeled Prompts
-  if (!domains.isLostFound && !domains.isLibrary && !domains.isCanteen && !domains.isStudyPartner && !domains.isExpense) {
-    const units = segmentPrompt(raw);
-    for (const unit of units) {
-      const uLower = unit.toLowerCase();
-      // Skip empty or trivial greeting
-      if (unit.length < 5 || /^(hi|hello|hey|please help me|i want to make a website)\b/i.test(uLower)) continue;
+  // Generalized Semantic Extraction: ensures user's actual statements are NEVER lost
+  const units = segmentPrompt(raw);
+  for (const unit of units) {
+    const uLower = unit.toLowerCase();
+    // Skip empty or trivial greeting
+    if (unit.length < 5 || /^(hi|hello|hey|please help me|i want to make a website)\b/i.test(uLower)) continue;
 
-      if (/\b(don't|do not|never|no\s+|cannot|must not|only(?!\s+if)|pickup only|local only)\b/i.test(uLower)) {
-        extracted.constraints.push(unit);
-        addEntity("CON-GEN", "constraint", "System", "Enforce", "Constraint", "", unit, [], "MUST", "V1", unit);
-      } else if (/\b(optional|if practical|if easy|nice to have|if possible|only if|if simple|if not too hard|otherwise skip)\b/i.test(uLower)) {
-        extracted.optional.push(unit);
-        addEntity("OPT-GEN", "optional", "User", "Option", "Feature", "", unit, [], "OPTIONAL", "V1", unit);
-      } else if (/\b(later|future|next version|down the road|can come later)\b/i.test(uLower)) {
-        extracted.scope.push(unit);
-        addEntity("FUT-GEN", "future", "System", "Defer", "Feature", "", unit, [], "FUTURE", "Future", unit);
-      } else if (/\b(clean|modern|mobile|responsive|ui|design|feel|simple)\b/i.test(uLower)) {
-        extracted.ux.push(unit);
-      } else if (/\b(react|vue|node|express|sqlite|postgres|database|backend)\b/i.test(uLower)) {
-        extracted.techDirection.push(unit);
-      } else if (/\b(basic version|first version|keep it simple|don't over-engineer|don't add random)\b/i.test(uLower)) {
-        extracted.boundaries.push(unit);
-      } else {
-        extracted.v1Requirements.push(unit);
-        addEntity("REQ-GEN", "functional", "User", "Perform", "Feature", "", unit, [], "MUST", "V1", unit);
-      }
+    // If a domain template already captured this semantic statement, don't duplicate
+    const allExisting = [
+      ...extracted.v1Requirements,
+      ...extracted.constraints,
+      ...extracted.optional,
+      ...extracted.scope,
+      ...extracted.boundaries,
+      ...extracted.ux,
+      ...extracted.techDirection,
+    ];
+    const words = unit.toLowerCase().match(/\b[a-z]{4,}\b/g) || [];
+    const isCovered = words.length >= 2 && allExisting.some((ex) => {
+      const exLower = ex.toLowerCase();
+      const matchCount = words.filter((w) => exLower.includes(w)).length;
+      return matchCount / words.length >= 0.7;
+    });
+
+    if (isCovered) continue;
+
+    if (/\b(don't|do not|never|no\s+|cannot|must not|only(?!\s+if)|pickup only|local only|private from)\b/i.test(uLower)) {
+      extracted.constraints.push(unit);
+      addEntity("CON-GEN", "constraint", "System", "Enforce", "Constraint", "", unit, [], "MUST", "V1", unit);
+    } else if (/\b(optional|if practical|if easy|nice to have|if possible|only if|if simple|if not too hard|otherwise skip)\b/i.test(uLower)) {
+      extracted.optional.push(unit);
+      addEntity("OPT-GEN", "optional", "User", "Option", "Feature", "", unit, [], "OPTIONAL", "V1", unit);
+    } else if (/\b(later|future|next version|down the road|can come later)\b/i.test(uLower)) {
+      extracted.scope.push(unit);
+      addEntity("FUT-GEN", "future", "System", "Defer", "Feature", "", unit, [], "FUTURE", "Future", unit);
+    } else if (/\b(clean|modern|mobile|responsive|ui|design|feel|simple)\b/i.test(uLower)) {
+      extracted.ux.push(unit);
+    } else if (/\b(react|vue|node|express|sqlite|postgres|database|backend)\b/i.test(uLower)) {
+      extracted.techDirection.push(unit);
+    } else if (/\b(basic version|first version|keep it simple|don't over-engineer|don't add random)\b/i.test(uLower)) {
+      extracted.boundaries.push(unit);
+    } else {
+      extracted.v1Requirements.push(unit);
+      addEntity("REQ-GEN", "functional", "User", "Perform", "Feature", "", unit, [], "MUST", "V1", unit);
     }
   }
 

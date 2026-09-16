@@ -26,6 +26,7 @@
 import { buildSections } from "../phase2/rewriter.js";
 import { detect } from "../phase1/detector.js";
 import { qualityCheck, buildOptimizedMarkdown, extractRequirements } from "../phase2/optimizer.js";
+import { validateAll } from "../src/validation/validate.js";
 
 // Words too generic to prove intent by themselves.
 const STOPWORDS = new Set(
@@ -205,7 +206,9 @@ export function verify(rawPrompt, rewriteResult) {
     open_questions: questions.map((q) => ({ category: q.category, text: q.text })),
   };
 
-  return { ok: failures.length === 0, hard_failures: failures, warnings, diff, diff_report: renderDiffReport(trimmed, diff, failures, warnings) };
+  const four_dimensions = validateAll(trimmed, prompt, result.spec);
+
+  return { ok: failures.length === 0, hard_failures: failures, warnings, diff, four_dimensions, diff_report: renderDiffReport(trimmed, diff, failures, warnings) };
 }
 
 /** Human-readable, glance-confirmable diff report. */
